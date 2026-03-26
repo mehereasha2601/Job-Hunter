@@ -1,0 +1,42 @@
+[
+  {
+    "id": "test-job-1",
+    "company": "Anthropic",
+    "role": "Machine Learning Engineer",
+    "location": "Boston, MA (Hybrid)",
+    "url": "https://boards.greenhouse.io/anthropic/jobs/test-ml-engineer",
+    "description": "Anthropic is seeking a Machine Learning Engineer to help build the next generation of AI systems. You'll work on cutting-edge foundation models, focusing on safety and alignment. We're looking for someone with strong Python skills, experience with PyTorch or TensorFlow, and a passion for responsible AI development.\n\nResponsibilities:\n- Design and implement training pipelines for large language models\n- Optimize model performance and efficiency using distributed computing\n- Collaborate with research team on alignment and safety techniques\n- Build evaluation frameworks to assess model capabilities\n- Deploy models to production with FastAPI and GCP infrastructure\n\nQualifications:\n- MS or BS in Computer Science, AI, or related field\n- 2+ years of experience with Python and deep learning frameworks (PyTorch, TensorFlow)\n- Strong understanding of NLP and transformer architectures\n- Experience with cloud platforms (GCP, AWS) and containerization (Docker, Kubernetes)\n- Familiarity with distributed training and model optimization\n\nWe sponsor H1B visas for qualified candidates."
+  },
+  {
+    "id": "test-job-2",
+    "company": "Flatiron Health",
+    "role": "Backend Engineer",
+    "location": "Boston, MA (On-site)",
+    "url": "https://flatiron.com/careers/backend-engineer-boston",
+    "description": "Flatiron Health uses technology and research to improve cancer care. We're looking for a Backend Engineer to build scalable data processing pipelines that handle millions of patient records. This role focuses on healthcare data infrastructure, ETL pipelines, and API development.\n\nWhat you'll do:\n- Design and build backend services processing large-scale medical data\n- Develop RESTful APIs using Python (FastAPI/Django) for internal and external consumers\n- Build ETL pipelines to transform and validate healthcare data (HL7, FHIR standards)\n- Work with PostgreSQL, BigQuery, and data warehousing solutions\n- Ensure HIPAA compliance and data security best practices\n- Collaborate with data science team on ML feature pipelines\n\nRequired skills:\n- 2-4 years of backend development experience\n- Strong Python skills, experience with FastAPI or Django\n- Database expertise (PostgreSQL, SQL optimization)\n- Experience building data pipelines and working with large datasets\n- Understanding of healthcare data standards (FHIR, HL7) is a plus\n- Cloud experience (AWS or GCP)\n\nFlatiron Health sponsors H1B visas."
+  },
+  {
+    "id": "test-job-3",
+    "company": "Stripe",
+    "role": "Software Engineer - Infrastructure",
+    "location": "Remote (US)",
+    "url": "https://stripe.com/jobs/software-engineer-infrastructure",
+    "description": "Stripe is building economic infrastructure for the internet. We're looking for a Software Engineer to join our Infrastructure team, focusing on backend systems, APIs, and developer tools.\n\nResponsibilities:\n- Build and scale backend services handling millions of API requests daily\n- Design reliable distributed systems with strong consistency guarantees\n- Develop internal tools and frameworks used by engineering teams\n- Work with Ruby, Python, and Go to build robust microservices\n- Implement monitoring, alerting, and observability solutions\n- Optimize database queries and caching strategies\n\nWhat we're looking for:\n- BS/MS in Computer Science or equivalent experience\n- Strong programming skills in Python, Java, Go, or Ruby\n- Experience with distributed systems and microservices architecture\n- Deep understanding of databases (PostgreSQL, Redis, etc.)\n- Cloud infrastructure experience (AWS, GCP, or Azure)\n- Passion for developer experience and API design\n\nStripe is an H1B sponsor and welcomes international candidates."
+  },
+  {
+    "id": "test-job-4",
+    "company": "Scale AI",
+    "role": "AI Engineer",
+    "location": "San Francisco, CA",
+    "url": "https://scale.com/careers/ai-engineer",
+    "description": "Scale AI is the data platform for AI, working with companies like OpenAI, Meta, and Microsoft. We're hiring an AI Engineer to build ML infrastructure and evaluation systems.\n\nYou will:\n- Develop ML models for data quality, classification, and annotation tasks\n- Build evaluation frameworks for LLMs and foundation models\n- Create data pipelines processing millions of training examples\n- Work with PyTorch, TensorFlow, and modern ML tooling\n- Collaborate with customers to understand their ML training needs\n- Build APIs and services for real-time model inference\n\nRequirements:\n- MS in AI, Machine Learning, or Computer Science (or BS with 3+ years experience)\n- Strong Python skills and deep learning framework experience (PyTorch preferred)\n- Experience training and fine-tuning large models\n- Understanding of NLP, computer vision, or both\n- Familiarity with cloud ML infrastructure (GCP, AWS)\n- Prior experience with LangChain, Hugging Face, or similar tools is a plus\n\nScale AI sponsors work visas including H1B."
+  },
+  {
+    "id": "test-job-5",
+    "company": "Wayfair",
+    "role": "Full Stack Engineer",
+    "location": "Boston, MA (Hybrid)",
+    "url": "https://www.wayfair.com/careers/job/full-stack-engineer-boston",
+    "description": "Wayfair is transforming the home shopping experience. Join our engineering team in Boston to build customer-facing features and internal tools that power our e-commerce platform.\n\nWhat you'll build:\n- Full stack features using React, TypeScript, and Python/Java backend services\n- Data visualization dashboards for business analytics\n- RESTful APIs and GraphQL endpoints\n- Microservices architecture with Docker and Kubernetes\n- Real-time data processing pipelines using Kafka and Spark\n- A/B testing frameworks and experimentation platforms\n\nWe're looking for:\n- BS or MS in Computer Science or related field\n- 2+ years of full stack development experience\n- Strong skills in JavaScript/TypeScript and React\n- Backend experience with Python, Java, or Node.js\n- Database knowledge (SQL, PostgreSQL, or MongoDB)\n- Experience with cloud platforms and containerization\n- Bonus: Experience with data engineering or ML pipelines\n\nWayfair sponsors H1B visas for qualified candidates."
+  }
+]

@@ -1,0 +1,99 @@
+name: Step 2 - Tailor Resumes & Emails
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_ids:
+        description: 'Comma-separated job IDs to tailor'
+        required: true
+        type: string
+
+jobs:
+  tailor:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      
+      - name: Install LaTeX (for PDF generation)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y texlive-latex-base texlive-latex-extra
+      
+      - name: Tailor resumes and emails
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          # Convert comma-separated IDs to space-separated
+          JOB_IDS=$(echo "${{ github.event.inputs.job_ids }}" | tr ',' ' ')
+          
+          echo "Tailoring jobs: $JOB_IDS"
+          python -m src.main_tailor $JOB_IDS
+      
+      - name: Commit generated files
+        run: |
+          git config user.name "Job Hunter Bot"
+          git config user.email "bot@jobhunter.local"
+          
+          # Add any new markdown files
+          git add output/
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Generated tailored resumes - $(date +%Y-%m-%d)"
+            git push
+          fi
+      
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tailored-outputs-${{ github.run_number }}
+          path: |
+            output/**/*.md
+          retention-days: 30
+      
+      - name: Notify on failure
+        if: failure()
+        env:
+          NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          python -c "
+          import smtplib
+          from email.mime.text import MIMEText
+          import os
+          
+          to_email = os.getenv('NOTIFICATION_EMAIL')
+          password = os.getenv('GMAIL_APP_PASSWORD')
+          
+          if to_email and password:
+              msg = MIMEText('Step 2 (tailoring) workflow failed. Check GitHub Actions logs.')
+              msg['Subject'] = '⚠️ Job Hunter Pipeline Error - Step 2'
+              msg['From'] = to_email
+              msg['To'] = to_email
+              
+              with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+                  server.login(to_email, password)
+                  server.send_message(msg)
+              
+              print('Error notification sent')
+          "

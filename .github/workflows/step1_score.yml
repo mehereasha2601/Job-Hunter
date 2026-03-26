@@ -1,0 +1,72 @@
+name: Step 1 - Score Jobs & Send Digest
+
+on:
+  schedule:
+    # 3x per day: Noon, 3 PM, 6 PM EST (17:00, 20:00, 23:00 UTC), Mon-Fri
+    - cron: '0 17,20,23 * * 1-5'
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      
+      - name: Score jobs and send digest
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          python -m src.main_score
+      
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scoring-logs-${{ github.run_number }}
+          path: |
+            *.log
+          retention-days: 7
+      
+      - name: Notify on failure
+        if: failure()
+        env:
+          NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          python -c "
+          import smtplib
+          from email.mime.text import MIMEText
+          import os
+          
+          to_email = os.getenv('NOTIFICATION_EMAIL')
+          password = os.getenv('GMAIL_APP_PASSWORD')
+          
+          if to_email and password:
+              msg = MIMEText('Step 1 (scoring) workflow failed. Check GitHub Actions logs.')
+              msg['Subject'] = '⚠️ Job Hunter Pipeline Error - Step 1'
+              msg['From'] = to_email
+              msg['To'] = to_email
+              
+              with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+                  server.login(to_email, password)
+                  server.send_message(msg)
+              
+              print('Error notification sent')
+          "

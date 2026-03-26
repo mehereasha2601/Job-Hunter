@@ -1,0 +1,93 @@
+name: Scrape JobSpy (LinkedIn/Indeed/Zip)
+
+on:
+  schedule:
+    # Every 2 hours, 9 AM - 6 PM EST (13:00, 15:00, 17:00, 19:00, 21:00 UTC), Mon-Fri
+    - cron: '0 13,15,17,19,21 * * 1-5'
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          # Install python-jobspy (commented in requirements.txt)
+          pip install -r requirements.txt
+          pip install python-jobspy || echo "Warning: python-jobspy install failed, skipping"
+      
+      - name: Scrape JobSpy
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          python -c "
+          from src.scraper_jobspy import JobSpyScraper
+          from src.h1b_filter import h1b_filter
+          from src.db import Database
+          from src.config import Config
+          
+          print('Starting JobSpy scrape...')
+          
+          scraper = JobSpyScraper()
+          db = Database()
+          
+          # Scrape with JobSpy
+          jobs = scraper.scrape_multiple_queries(
+              job_titles=Config.JOB_TITLES,
+              locations=Config.LOCATIONS,
+              results_per_query=50
+          )
+          
+          # Normalize
+          normalized_jobs = [scraper.normalize_job(job) for job in jobs]
+          print(f'Scraped {len(normalized_jobs)} jobs')
+          
+          # Filter and store
+          new_count = 0
+          filtered_count = 0
+          
+          for job in normalized_jobs:
+              if not h1b_filter:
+                  continue
+              
+              # H1B filter
+              h1b_result = h1b_filter.classify_job(
+                  company=job['company'],
+                  description=job['description']
+              )
+              
+              if h1b_result['h1b_flag'] == 'blocked':
+                  filtered_count += 1
+                  continue
+              
+              job['h1b_flag'] = h1b_result['h1b_flag']
+              job['on_target_list'] = h1b_result['on_target_list']
+              
+              # Store to DB
+              job_id = db.generate_job_id(job['url'], job['company'], job['title'])
+              existing = db.get_job(job_id)
+              
+              if not existing:
+                  db.insert_job(job)
+                  new_count += 1
+          
+          print(f'New jobs: {new_count}')
+          print(f'Filtered (H1B blocked): {filtered_count}')
+          print(f'Duplicates: {len(normalized_jobs) - new_count - filtered_count}')
+          "
+      
+      - name: Report status
+        if: always()
+        run: |
+          echo "JobSpy scrape completed at $(date)"

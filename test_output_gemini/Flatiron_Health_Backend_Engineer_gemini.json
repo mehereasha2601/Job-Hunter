@@ -1,0 +1,64 @@
+{
+  "job": {
+    "id": "test-job-2",
+    "company": "Flatiron Health",
+    "role": "Backend Engineer",
+    "location": "Boston, MA (On-site)",
+    "url": "https://flatiron.com/careers/backend-engineer-boston",
+    "description": "Flatiron Health uses technology and research to improve cancer care. We're looking for a Backend Engineer to build scalable data processing pipelines that handle millions of patient records. This role focuses on healthcare data infrastructure, ETL pipelines, and API development.\n\nWhat you'll do:\n- Design and build backend services processing large-scale medical data\n- Develop RESTful APIs using Python (FastAPI/Django) for internal and external consumers\n- Build ETL pipelines to transform and validate healthcare data (HL7, FHIR standards)\n- Work with PostgreSQL, BigQuery, and data warehousing solutions\n- Ensure HIPAA compliance and data security best practices\n- Collaborate with data science team on ML feature pipelines\n\nRequired skills:\n- 2-4 years of backend development experience\n- Strong Python skills, experience with FastAPI or Django\n- Database expertise (PostgreSQL, SQL optimization)\n- Experience building data pipelines and working with large datasets\n- Understanding of healthcare data standards (FHIR, HL7) is a plus\n- Cloud experience (AWS or GCP)\n\nFlatiron Health sponsors H1B visas."
+  },
+  "provider": "gemini",
+  "timestamp": "2026-03-26T17:40:44.358893",
+  "resume": {
+    "resume_text": "Easha Meher Koppisetty\nmehereasha2601@gmail.com 8572943442 Boston, MA https://www.linkedin.com/in/easha-meher\nhttps://github.com/mehereasha2601 https://mehereasha2601.github.io/\n\nEDUCATION\n\nNortheastern University\nMaster of Science in Artificial Intelligence\nJan 2024 \u2013 May 2026 | Boston, MA\nRelevant Coursework: Foundations of AI, Machine Learning, Deep Learning, Natural Language Processing, AI for HCI\n\nVellore Institute of Technology\nBachelor of Technology in Computer Science\n2017 \u2013 2021 | Vellore, India\nRelevant Coursework: Database Management Systems, Data Analytics, Object-Oriented Programming, Image Processing\n\nTECHNICAL SKILLS\n\nLanguages & Frameworks: Python, Java, C++, JavaScript, React, Flutter, R, HTML, CSS\nMachine Learning & AI: TensorFlow, PyTorch, Keras, Scikit-learn, OpenCV, Spacy, NLTK, TorchVision\nCloud & DevOps: AWS (Lambda, S3, DynamoDB), GCP, Azure, Docker, Kubernetes, Jenkins, Linux\nDatabase & Big Data: PostgreSQL, SQL, BigQuery, MongoDB, Snowflake, Kafka, Apache Spark\nTools & Platforms: FastAPI, Git, Copilot, Bitbucket, LangChain, OpenAI API\n\nWORK EXPERIENCE\n\nOK AI\nMachine Learning Intern\nSep 2025 \u2013 Jan 2026 | Boston, MA\n- Engineered voice AI interview platform using MERN stack, designed conversational prompts and workflows for multilingual job candidate screening and real-time profile generation.\n- Architected Cloud backend infrastructure, achieving 12x performance improvement (60s to 5s response times) through optimized API design, caching strategies, and migration to Google Cloud services.\n- Built secure authentication systems and scalable database architecture supporting thousands of users, using AI development tools to accelerate feature delivery.\n\nKhoury College of Computer Sciences, Northeastern University\nGraduate Teaching Assistant - Object-Oriented Design\nSep 2024 \u2013 Aug 2025 | Boston, MA\n- Conducted lab sessions on OOP concepts, Software Design Patterns, and System Architecture, helping students build scalable solutions through hands-on projects.\n- Supported ~100 students per semester in debugging code issues and understanding core software development practices, providing personalized feedback.\n\nInfo Edge (India) Limited\nSenior Software Developer\nJul 2023 \u2013 Dec 2023 | Bangalore, India\n- Developed and deployed AI/ML models to detect cheating incidents during online exams by analyzing webcam feeds and behavior anomalies.\n- Designed a real-time fraud detection system using Computer Vision and NLP models, reducing false positives by 30% and improving proctoring accuracy.\n- Built automated monitoring pipelines using Python, OpenCV, and TensorFlow, ensuring scalable and efficient fraud detection for high-volume exams.\n- Conducted data-driven analysis to refine AI models, improving cheating detection rates and reducing manual review time by 40%.\n\nPharmeasy (Threpsi Solutions Private Limited)\nSoftware Developer\nJul 2021 \u2013 Jul 2023 | Bangalore, India\n- Built backend services processing 200K+ medical records monthly using Python and Java, with PostgreSQL and AWS infrastructure, ensuring data integrity and healthcare compliance.\n- Designed ETL pipelines and RESTful APIs to transform and store medical data, reducing processing time by 25% through optimized queries and caching.\n- Developed React-based UI components and OCR integration modules for prescription digitization, improving medicine mapping accuracy by 15%.\n- Created automated test scripts using pytest and JUnit, built monitoring dashboards, and integrated validation services, reducing manual review time by 35%.\n\nPROJECTS & LEADERSHIP\n\nBayesian Uncertainty Quantification in Medical QA Systems 2025\n- Fine-tuned LLM models (LLaMA 2, Mistral, BERT) on MedQA (50K+ samples) using Hugging Face Transformers and PyTorch, achieving 84% test accuracy.\n- Integrated Monte Carlo Dropout for uncertainty estimation using TensorFlow Probability, optimizing entropy at 1.13, enhancing model reliability.\n\nAnalyzing Cricket: Shot Recognition & Similarity\n- Built a Machine Learning pipeline using EfficientNetV2 and OpenCV to classify cricket batting shots, achieving 94% accuracy.\n- Implemented motion analysis & feature extraction from 1,000+ video frames using MediaPipe Pose Estimation, enabling player style recognition.\n\nKidneyCare: Real-time Kidney Stone Detection\n- Developed a full-stack system for real-time kidney stone detection using a toilet-mounted camera, achieving 96.2% CV pipeline accuracy.\n- Designed a FastAPI backend with InterSystems IRIS FHIR integration and a React frontend for secure healthcare data management.",
+    "provider": "gemini",
+    "success": true,
+    "error": null
+  },
+  "emails": {
+    "hiring_manager": {
+      "subject": "Interested in Backend Engineer \u2014 processed 200K+ medical records monthly with Python/PostgreSQL",
+      "body": "I'm genuinely interested in Flatiron Health's mission to improve cancer care through technology, especially the Backend Engineer role focused on scalable data pipelines. At Pharmeasy, I built backend services processing over 200K medical records monthly using Python and PostgreSQL, ensuring data integrity and compliance. I also designed ETL pipelines that reduced processing time by 25% and developed RESTful APIs for healthcare data. I think my experience building robust healthcare data infrastructure could significantly contribute to your team's work. Would you be open to a quick 15-minute chat to discuss this further?"
+    },
+    "recruiter": {
+      "subject": "Interested in Backend Engineer \u2014 processed 200K+ medical records monthly with Python/PostgreSQL",
+      "body": "I'm writing regarding the Backend Engineer role at Flatiron Health, which aligns well with my background in building scalable data processing pipelines. My experience includes developing backend services in Python and Java, processing over 200K medical records monthly with PostgreSQL and AWS. I've designed ETL pipelines that reduced processing time by 25% and built RESTful APIs, ensuring healthcare compliance. With strong Python, database, and cloud skills, I meet the core qualifications for this position. I'd be excited to discuss how my experience could benefit your team in a brief 15-minute call."
+    },
+    "provider": "gemini",
+    "success": true,
+    "error": null
+  },
+  "guardrails": {
+    "hallucination": {
+      "passed": true,
+      "flags": []
+    },
+    "banned_phrases": {
+      "passed": true,
+      "found": []
+    },
+    "keyword_match": {
+      "score": 88.9,
+      "matched": 8,
+      "total": 9,
+      "keywords": [
+        "postgresql",
+        "fastapi",
+        "aws",
+        "gcp",
+        "django",
+        "api",
+        "python",
+        "sql",
+        "ml"
+      ]
+    },
+    "length": {
+      "passed": false,
+      "char_count": 4567,
+      "max_chars": 3500,
+      "percentage": 130.5
+    },
+    "passed": false
+  }
+}

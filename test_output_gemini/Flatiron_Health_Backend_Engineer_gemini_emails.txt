@@ -1,0 +1,9 @@
+=== HIRING MANAGER VERSION ===
+Subject: Interested in Backend Engineer — processed 200K+ medical records monthly with Python/PostgreSQL
+
+I'm genuinely interested in Flatiron Health's mission to improve cancer care through technology, especially the Backend Engineer role focused on scalable data pipelines. At Pharmeasy, I built backend services processing over 200K medical records monthly using Python and PostgreSQL, ensuring data integrity and compliance. I also designed ETL pipelines that reduced processing time by 25% and developed RESTful APIs for healthcare data. I think my experience building robust healthcare data infrastructure could significantly contribute to your team's work. Would you be open to a quick 15-minute chat to discuss this further?
+
+=== RECRUITER VERSION ===
+Subject: Interested in Backend Engineer — processed 200K+ medical records monthly with Python/PostgreSQL
+
+I'm writing regarding the Backend Engineer role at Flatiron Health, which aligns well with my background in building scalable data processing pipelines. My experience includes developing backend services in Python and Java, processing over 200K medical records monthly with PostgreSQL and AWS. I've designed ETL pipelines that reduced processing time by 25% and built RESTful APIs, ensuring healthcare compliance. With strong Python, database, and cloud skills, I meet the core qualifications for this position. I'd be excited to discuss how my experience could benefit your team in a brief 15-minute call.

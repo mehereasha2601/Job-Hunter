@@ -1,0 +1,68 @@
+Easha Meher Koppisetty
+mehereasha2601@gmail.com 8572943442 Boston, MA https://www.linkedin.com/in/easha-meher
+https://github.com/mehereasha2601 https://mehereasha2601.github.io/
+
+EDUCATION
+
+Northeastern University
+Master of Science in Artificial Intelligence
+Jan 2024 – May 2026 | Boston, MA
+Relevant Coursework: Foundations of AI, Machine Learning, Deep Learning, Natural Language Processing, AI for HCI
+
+Vellore Institute of Technology
+Bachelor of Technology in Computer Science
+2017 – 2021 | Vellore, India
+Relevant Coursework: Database Management Systems, Data Analytics, Object-Oriented Programming, Image Processing
+
+TECHNICAL SKILLS
+
+Languages & Frameworks: Python, Java, C++, JavaScript, React, Flutter, R, HTML, CSS
+Machine Learning & AI: TensorFlow, PyTorch, Keras, Scikit-learn, OpenCV, Spacy, NLTK, TorchVision
+Cloud & DevOps: AWS (Lambda, S3, DynamoDB), GCP, Azure, Docker, Kubernetes, Jenkins, Linux
+Database & Big Data: PostgreSQL, SQL, BigQuery, MongoDB, Snowflake, Kafka, Apache Spark
+Tools & Platforms: FastAPI, Git, Copilot, Bitbucket, LangChain, OpenAI API
+
+WORK EXPERIENCE
+
+OK AI
+Machine Learning Intern
+Sep 2025 – Jan 2026 | Boston, MA
+- Engineered voice AI interview platform using MERN stack, designed conversational prompts and workflows for multilingual job candidate screening and real-time profile generation.
+- Architected Cloud backend infrastructure, achieving 12x performance improvement (60s to 5s response times) through optimized API design, caching strategies, and migration to Google Cloud services.
+- Built secure authentication systems and scalable database architecture supporting thousands of users, using AI development tools to accelerate feature delivery.
+
+Khoury College of Computer Sciences, Northeastern University
+Graduate Teaching Assistant - Object-Oriented Design
+Sep 2024 – Aug 2025 | Boston, MA
+- Conducted lab sessions on OOP concepts, Software Design Patterns, and System Architecture, helping students build scalable solutions through hands-on projects.
+- Supported ~100 students per semester in debugging code issues and understanding core software development practices, providing personalized feedback.
+
+Info Edge (India) Limited
+Senior Software Developer
+Jul 2023 – Dec 2023 | Bangalore, India
+- Developed and deployed AI/ML models to detect cheating incidents during online exams by analyzing webcam feeds and behavior anomalies.
+- Designed a real-time fraud detection system using Computer Vision and NLP models, reducing false positives by 30% and improving proctoring accuracy.
+- Built automated monitoring pipelines using Python, OpenCV, and TensorFlow, ensuring scalable and efficient fraud detection for high-volume exams.
+- Conducted data-driven analysis to refine AI models, improving cheating detection rates and reducing manual review time by 40%.
+
+Pharmeasy (Threpsi Solutions Private Limited)
+Software Developer
+Jul 2021 – Jul 2023 | Bangalore, India
+- Built backend services processing 200K+ medical records monthly using Python and Java, with PostgreSQL and AWS infrastructure, ensuring data integrity and healthcare compliance.
+- Designed ETL pipelines and RESTful APIs to transform and store medical data, reducing processing time by 25% through optimized queries and caching.
+- Developed React-based UI components and OCR integration modules for prescription digitization, improving medicine mapping accuracy by 15%.
+- Created automated test scripts using pytest and JUnit, built monitoring dashboards, and integrated validation services, reducing manual review time by 35%.
+
+PROJECTS & LEADERSHIP
+
+Bayesian Uncertainty Quantification in Medical QA Systems 2025
+- Fine-tuned LLM models (LLaMA 2, Mistral, BERT) on MedQA (50K+ samples) using Hugging Face Transformers and PyTorch, achieving 84% test accuracy.
+- Integrated Monte Carlo Dropout for uncertainty estimation using TensorFlow Probability, optimizing entropy at 1.13, enhancing model reliability.
+
+Analyzing Cricket: Shot Recognition & Similarity
+- Built a Machine Learning pipeline using EfficientNetV2 and OpenCV to classify cricket batting shots, achieving 94% accuracy.
+- Implemented motion analysis & feature extraction from 1,000+ video frames using MediaPipe Pose Estimation, enabling player style recognition.
+
+KidneyCare: Real-time Kidney Stone Detection
+- Developed a full-stack system for real-time kidney stone detection using a toilet-mounted camera, achieving 96.2% CV pipeline accuracy.
+- Designed a FastAPI backend with InterSystems IRIS FHIR integration and a React frontend for secure healthcare data management.
