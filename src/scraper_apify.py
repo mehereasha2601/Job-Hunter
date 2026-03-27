@@ -6,6 +6,9 @@ Uses Apify's Google Jobs Scraper actor (Section 11 of spec.md).
 import requests
 from typing import List, Dict
 import time
+from datetime import datetime
+
+from .config import Config
 
 
 class ApifyScraper:
@@ -115,7 +118,7 @@ class ApifyScraper:
         return []
     
     def _fetch_dataset(self, dataset_id: str) -> List[Dict]:
-        """Fetch results from dataset."""
+        """Fetch results from dataset and apply filtering."""
         try:
             dataset_url = f"{self.base_url}/datasets/{dataset_id}/items?token={self.api_token}"
             response = requests.get(dataset_url, timeout=30)
@@ -125,11 +128,16 @@ class ApifyScraper:
             
             items = response.json()
             
-            # Normalize to our schema
+            # Normalize and filter jobs
             normalized = []
             for item in items:
-                normalized.append(self.normalize_job(item))
+                job = self.normalize_job(item)
+                
+                # Apply filtering logic
+                if self._should_include_job(job):
+                    normalized.append(job)
             
+            print(f"  Apify: Found {len(items)} jobs, filtered to {len(normalized)}")
             return normalized
         
         except Exception as e:
@@ -155,6 +163,95 @@ class ApifyScraper:
             'location': job.get('location', ''),
             'raw_data': job
         }
+    
+    def _should_include_job(self, job: Dict) -> bool:
+        """
+        Check if job meets filtering criteria (same as Greenhouse).
+        
+        Filters:
+        - Job title match
+        - US location (exclude Canada-only, international)
+        - Exclude senior roles
+        - Exclude manager roles
+        - Posted within last 14 days
+        """
+        title = job.get('title', '').lower()
+        location = job.get('location', '').lower()
+        raw_data = job.get('raw_data', job)
+        
+        # 1. Check job title matches
+        title_match = any(
+            target.lower() in title
+            for target in Config.JOB_TITLES
+        )
+        if not title_match:
+            return False
+        
+        # 2. Exclude senior roles
+        is_senior = any(
+            keyword.lower() in title
+            for keyword in Config.EXCLUDE_SENIORITY_KEYWORDS
+        )
+        if is_senior:
+            return False
+        
+        # 3. Location filtering (multi-location logic)
+        has_us = any(
+            keyword in location
+            for keyword in Config.US_LOCATION_KEYWORDS
+        )
+        
+        has_non_us = any(
+            keyword in location
+            for keyword in Config.NON_US_LOCATION_KEYWORDS
+        )
+        
+        # Exclude if non-US only (no US option)
+        if has_non_us and not has_us:
+            return False
+        
+        # 4. Check recency (Google Jobs provides publishedDate)
+        date_field = raw_data.get('publishedDate') or raw_data.get('datePosted')
+        if date_field:
+            try:
+                # Google Jobs uses ISO format or various date strings
+                if isinstance(date_field, str):
+                    if 'T' in date_field:
+                        posted_date = datetime.fromisoformat(date_field.replace('Z', '+00:00'))
+                    elif 'ago' in date_field.lower():
+                        # Parse "2 days ago", "1 week ago", etc.
+                        parts = date_field.lower().split()
+                        if len(parts) >= 2:
+                            num = int(parts[0]) if parts[0].isdigit() else 1
+                            unit = parts[1]
+                            
+                            if 'day' in unit:
+                                age_days = num
+                            elif 'week' in unit:
+                                age_days = num * 7
+                            elif 'month' in unit:
+                                age_days = num * 30
+                            else:
+                                age_days = 0
+                            
+                            if age_days > Config.MAX_JOB_AGE_DAYS:
+                                return False
+                    else:
+                        # Try parsing standard date formats
+                        for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d-%m-%Y']:
+                            try:
+                                posted_date = datetime.strptime(date_field, fmt)
+                                age_days = (datetime.now() - posted_date).days
+                                
+                                if age_days > Config.MAX_JOB_AGE_DAYS:
+                                    return False
+                                break
+                            except:
+                                continue
+            except Exception as e:
+                pass  # If parsing fails, include the job
+        
+        return True
     
     def build_queries(self, job_titles: List[str], locations: List[str]) -> List[str]:
         """

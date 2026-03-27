@@ -5,8 +5,11 @@ Section 10 of spec.md.
 
 import time
 from typing import List, Dict
+from datetime import datetime, timedelta
 # Commented out for Phase 1 - uncomment when ready for Phase 2
 # from python_jobspy import scrape_jobs
+
+from .config import Config
 
 
 class JobSpyScraper:
@@ -33,7 +36,7 @@ class JobSpyScraper:
             site_name: List of sites to scrape
         
         Returns:
-            List of job dicts
+            List of filtered job dicts
         """
         jobs = []
         
@@ -50,7 +53,17 @@ class JobSpyScraper:
             # )
             # 
             # if df is not None and not df.empty:
-            #     jobs = df.to_dict('records')
+            #     raw_jobs = df.to_dict('records')
+            #     
+            #     # Normalize and filter jobs
+            #     for raw_job in raw_jobs:
+            #         normalized = self.normalize_job(raw_job)
+            #         
+            #         # Apply filtering logic
+            #         if self._should_include_job(normalized):
+            #             jobs.append(normalized)
+            #     
+            #     print(f"  JobSpy: Found {len(raw_jobs)} jobs, filtered to {len(jobs)}")
             
             print(f"JobSpy: Would scrape {search_term} in {location} from {site_name}")
             print("(python-jobspy currently disabled for Phase 1)")
@@ -116,5 +129,82 @@ class JobSpyScraper:
             'url': job.get('job_url', ''),
             'source': source_mapping.get(job.get('site', ''), 'jobspy'),
             'description': job.get('description', ''),
-            'location': job.get('location', '')
+            'location': job.get('location', ''),
+            'raw_data': job
         }
+    
+    def _should_include_job(self, job: Dict) -> bool:
+        """
+        Check if job meets filtering criteria (same as Greenhouse).
+        
+        Filters:
+        - Job title match
+        - US location (exclude Canada-only, international)
+        - Exclude senior roles
+        - Exclude manager roles
+        - Posted within last 14 days
+        """
+        title = job.get('title', '').lower()
+        location = job.get('location', '').lower()
+        raw_data = job.get('raw_data', job)  # Use job itself if no raw_data
+        
+        # 1. Check job title matches
+        title_match = any(
+            target.lower() in title
+            for target in Config.JOB_TITLES
+        )
+        if not title_match:
+            return False
+        
+        # 2. Exclude senior roles
+        is_senior = any(
+            keyword.lower() in title
+            for keyword in Config.EXCLUDE_SENIORITY_KEYWORDS
+        )
+        if is_senior:
+            return False
+        
+        # 3. Location filtering (multi-location logic)
+        has_us = any(
+            keyword in location
+            for keyword in Config.US_LOCATION_KEYWORDS
+        )
+        
+        has_non_us = any(
+            keyword in location
+            for keyword in Config.NON_US_LOCATION_KEYWORDS
+        )
+        
+        # Exclude if non-US only (no US option)
+        if has_non_us and not has_us:
+            return False
+        
+        # 4. Check recency (JobSpy provides date_posted field)
+        date_field = raw_data.get('date_posted') or raw_data.get('posted_at')
+        if date_field:
+            try:
+                # JobSpy uses various date formats
+                if isinstance(date_field, str):
+                    if 'T' in date_field:
+                        # ISO format
+                        posted_date = datetime.fromisoformat(date_field.replace('Z', '+00:00'))
+                    else:
+                        # Try common formats
+                        for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d-%m-%Y']:
+                            try:
+                                posted_date = datetime.strptime(date_field, fmt)
+                                break
+                            except:
+                                continue
+                        else:
+                            return True  # Can't parse, include it
+                    
+                    now = datetime.now(posted_date.tzinfo) if posted_date.tzinfo else datetime.now()
+                    age_days = (now - posted_date).days
+                    
+                    if age_days > Config.MAX_JOB_AGE_DAYS:
+                        return False
+            except Exception as e:
+                pass  # If parsing fails, include the job
+        
+        return True
