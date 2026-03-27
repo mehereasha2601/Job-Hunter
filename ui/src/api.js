@@ -58,6 +58,7 @@ export const api = {
     if (filters.min_score) params.append('min_score', filters.min_score);
     if (filters.company) params.append('company', filters.company);
     if (filters.source) params.append('source', filters.source);
+    if (filters.sort_by) params.append('sort_by', filters.sort_by);  // NEW
     if (filters.limit) params.append('limit', filters.limit);
     if (filters.offset) params.append('offset', filters.offset);
     

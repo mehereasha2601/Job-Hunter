@@ -9,7 +9,8 @@ export default function JobTable() {
   const [filters, setFilters] = useState({
     status: '',
     min_score: '',
-    company: ''
+    company: '',
+    sort_by: 'score'  // NEW - default sort by score
   });
   const [tailoring, setTailoring] = useState(false);
   const [tailorSuccess, setTailorSuccess] = useState(false);
@@ -26,6 +27,7 @@ export default function JobTable() {
       if (filters.status) cleanFilters.status = filters.status;
       if (filters.min_score) cleanFilters.min_score = parseFloat(filters.min_score);
       if (filters.company) cleanFilters.company = filters.company;
+      if (filters.sort_by) cleanFilters.sort_by = filters.sort_by;  // NEW
       
       const data = await api.getJobs(cleanFilters);
       setJobs(data.jobs);
@@ -103,6 +105,27 @@ export default function JobTable() {
     return `status-badge status-${status}`;
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffHours = diffMs / 1000 / 60 / 60;
+      const diffDays = diffHours / 24;
+      
+      if (diffHours < 1) return 'Just now';
+      if (diffHours < 24) return `${Math.floor(diffHours)}h ago`;
+      if (diffDays < 7) return `${Math.floor(diffDays)}d ago`;
+      if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+      
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch {
+      return 'N/A';
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -129,7 +152,7 @@ export default function JobTable() {
     <div className="space-y-4">
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Status
@@ -179,9 +202,24 @@ export default function JobTable() {
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Sort By
+            </label>
+            <select
+              value={filters.sort_by}
+              onChange={(e) => setFilters(prev => ({ ...prev, sort_by: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="score">Score (Best Match)</option>
+              <option value="date_posted">Date Posted (Newest)</option>
+              <option value="first_seen_at">Recently Added</option>
+            </select>
+          </div>
+
           <div className="flex items-end">
             <button
-              onClick={() => setFilters({ status: '', min_score: '', company: '' })}
+              onClick={() => setFilters({ status: '', min_score: '', company: '', sort_by: 'score' })}
               className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
             >
               Clear Filters
@@ -240,6 +278,9 @@ export default function JobTable() {
                 Location
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Posted
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -250,7 +291,7 @@ export default function JobTable() {
           <tbody className="bg-white divide-y divide-gray-200">
             {jobs.length === 0 ? (
               <tr>
-                <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
+                <td colSpan="8" className="px-6 py-12 text-center text-gray-500">
                   No jobs found. Try adjusting your filters.
                 </td>
               </tr>
@@ -286,6 +327,9 @@ export default function JobTable() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {job.location}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatDate(job.date_posted)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <select
