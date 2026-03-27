@@ -88,18 +88,50 @@ class Config:
     
     # Job search parameters (Section 4)
     JOB_TITLES = [
+        # Core engineering roles
         'Software Engineer',
         'ML Engineer',
         'AI Engineer',
         'Machine Learning Engineer',
         'Backend Engineer',
-        'Full Stack Engineer'
+        'Full Stack Engineer',
+        # Additional ML/AI roles
+        'Data Engineer',
+        'Machine Learning Scientist',
+        'Research Scientist',
+        'Applied Scientist',
+        'NLP Engineer',
+        'Natural Language Processing Engineer',
+        'Computer Vision Engineer',
+        'Data Scientist',
+        # Platform roles
+        'Platform Engineer',
+        'Infrastructure Engineer',
+        'MLOps Engineer',
+        'ML Platform Engineer',
+        # Entry-level variants
+        'New Grad Software Engineer',
+        'New Grad',
+        'Associate Engineer',
+        'Associate Software Engineer',
+        'Junior Engineer',
+        'Junior Software Engineer',
+        # QA/Testing roles
+        'Test Engineer',
+        'QA Engineer',
+        'SDET',
+        'Software Development Engineer in Test',
+        # Analyst roles (relevant to data/ML)
+        'Data Analyst',
+        'ML Analyst',
+        'AI Analyst'
     ]
     
     # Exclude senior roles (Section 4 - Entry/Mid level only)
     EXCLUDE_SENIORITY_KEYWORDS = [
         'senior',
         'sr.',
+        'sr ',
         'staff',
         'principal',
         'lead',
@@ -108,11 +140,18 @@ class Config:
         'vice president',
         'head of',
         'chief',
+        'manager',  # Added to exclude manager roles
+        'engineering manager',
+        '3+ years',
+        '3 years',
+        '4+ years',
+        '4 years',
         '5+ years',
         '5 years',
         '6+ years',
         '7+ years',
-        '8+ years'
+        '8+ years',
+        '10+ years'
     ]
     
     LOCATIONS = [
