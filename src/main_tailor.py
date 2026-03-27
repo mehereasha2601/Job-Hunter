@@ -141,7 +141,7 @@ def _process_job(
             db.mark_job_error(job_id, error)
             return {'success': False, 'error': error, 'job': job}
         
-        tailored_resume = resume_result['resume']
+        tailored_resume = resume_result['resume_text']
         print(f"    ✓ Resume generated ({len(tailored_resume)} chars)")
         
         # Step 2: Draft cold emails
