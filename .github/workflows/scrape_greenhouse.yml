@@ -2,8 +2,8 @@ name: Scrape Greenhouse Boards
 
 on:
   schedule:
-    # Every 30 minutes, 9 AM - 6 PM EST (13:00 - 22:00 UTC), Mon-Fri
-    - cron: '0,30 13-22 * * 1-5'
+    # ~8 AM US Eastern (12:00 UTC during EDT). Once per day, Friday and Saturday only.
+    - cron: '0 12 * * 5,6'
   workflow_dispatch:  # Manual trigger
 
 jobs:
