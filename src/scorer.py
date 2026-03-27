@@ -67,13 +67,23 @@ class JobScorer:
 You will score jobs 1-10 based on how well they match the candidate's background.
 
 Scoring criteria (in priority order):
-1. H1B friendliness (30%) - Company on H1B sponsor list, no blocking language
-2. Tech stack match (30%) - Python, FastAPI, GCP, ML tools, PyTorch, TensorFlow, backend tech
-3. Location (20%) - Boston or Remote preferred
-4. Company tier (20%) - On target list of 250 companies
+1. Experience Level (35%) - Entry/mid-level roles only (0-3 years). Reject if requires 4+ years.
+2. H1B friendliness (25%) - Company on H1B sponsor list, no blocking language
+3. Tech stack match (20%) - Python, FastAPI, GCP, ML tools, PyTorch, TensorFlow, backend tech
+4. Location (10%) - Boston or Remote preferred
+5. Company tier (10%) - On target list of 250 companies
+
+Experience Level Guidelines:
+- 0-2 years required: Score 9-10 (perfect for entry-level)
+- 2-3 years required: Score 7-8 (acceptable for mid-level)
+- 3-4 years required: Score 4-5 (borderline)
+- 4+ years required: Score 1-3 (too senior, likely reject)
+- If "Level II" or "SWE II" in title: Check description for actual requirements
+- "New Grad", "Entry Level", "Junior" indicators: Score high
 
 Your task:
 - Read the job description carefully
+- Check experience requirements explicitly mentioned
 - Compare to the candidate's resume
 - Score 1-10 (1=poor match, 10=perfect match)
 - Provide brief reasoning (2-3 sentences)

@@ -90,14 +90,24 @@ class Config:
     JOB_TITLES = [
         # Core engineering roles
         'Software Engineer',
+        'Software Developer',  # Catches all Developer variants
+        'Software Development Engineer',  # NEW - Amazon/Microsoft style
+        'Developer',  # Catches Web Developer, Backend Developer, etc.
         'ML Engineer',
         'AI Engineer',
         'Machine Learning Engineer',
         'Backend Engineer',
+        'Backend Developer',
         'Frontend Engineer',
+        'Frontend Developer',
         'Full Stack Engineer',
-        'API Engineer',  # Backend / API Engineer
-        'SDK Engineer',  # SDK development roles
+        'Full Stack Developer',
+        'API Engineer',
+        'SDK Engineer',
+        # Web development
+        'Web Developer',
+        'Web Engineer',
+        'Web UI Engineer',  # NEW - UI-focused web roles
         # Additional ML/AI roles
         'Data Engineer',
         'Machine Learning Scientist',
@@ -117,13 +127,20 @@ class Config:
         'New Grad',
         'Associate Engineer',
         'Associate Software Engineer',
+        'Associate Developer',
         'Junior Engineer',
         'Junior Software Engineer',
+        'Junior Developer',
+        'Entry Level',  # Catches "Entry Level Software Developer"
+        # Internships
+        'Intern',  # Catches all internship titles
+        'Software Intern',
         # QA/Testing roles
         'Test Engineer',
         'QA Engineer',
         'SDET',
         'Software Development Engineer in Test',
+        'Software Tester',
         # Analyst roles (relevant to data/ML)
         'Data Analyst',
         'ML Analyst',
@@ -131,6 +148,8 @@ class Config:
     ]
     
     # Exclude senior roles (Section 4 - Entry/Mid level only)
+    # NOTE: Level II removed - can be entry/mid level at many companies
+    # LLM will filter based on actual experience requirements in description
     EXCLUDE_SENIORITY_KEYWORDS = [
         'senior',
         'sr.',
@@ -143,8 +162,9 @@ class Config:
         'vice president',
         'head of',
         'chief',
-        'manager',  # Added to exclude manager roles
+        'manager',
         'engineering manager',
+        'founding',  # Founding Engineer - typically senior
         '3+ years',
         '3 years',
         '4+ years',
@@ -154,7 +174,20 @@ class Config:
         '6+ years',
         '7+ years',
         '8+ years',
-        '10+ years'
+        '10+ years',
+        # Only exclude clearly senior levels
+        ' iii',  # Level III - typically senior
+        'iii ',
+        ' iv',   # Level IV - definitely senior
+        'iv ',
+        ' v',    # Level V - definitely senior
+        'v ',
+        'level 3',  # Explicit level 3+ typically senior
+        'level 4',
+        'level 5',
+        'engineer 3',  # E3 at some companies is senior
+        'engineer 4',
+        'engineer 5'
     ]
     
     LOCATIONS = [
@@ -169,9 +202,12 @@ class Config:
         'usa',
         'us-',  # US-SF, US-NYC, US-Remote
         ', us',  # "San Francisco, US"
+        '(us)',  # "Remote (US)"
+        'us (',  # "US (Multiple Locations)"
         'remote in us',
         'remote us',
         'us remote',
+        'in the us',  # "Remote in the US"
         'us,',  # "NYC, US, Canada"
         'nyc',
         'new york',
@@ -194,7 +230,13 @@ class Config:
         'miami',
         'atlanta',
         'philadelphia',
-        'washington dc'
+        'washington dc',
+        # US state abbreviations (catch all US cities)
+        ', al', ', ak', ', az', ', ar', ', ca', ', co', ', ct', ', de', ', fl', ', ga',
+        ', hi', ', id', ', il', ', in', ', ia', ', ks', ', ky', ', la', ', me', ', md',
+        ', ma', ', mi', ', mn', ', ms', ', mo', ', mt', ', ne', ', nv', ', nh', ', nj',
+        ', nm', ', ny', ', nc', ', nd', ', oh', ', ok', ', or', ', pa', ', ri', ', sc',
+        ', sd', ', tn', ', tx', ', ut', ', vt', ', va', ', wa', ', wv', ', wi', ', wy'
     ]
     
     # Exclude non-US locations

@@ -234,18 +234,27 @@ class JobSpyScraper:
         if is_senior:
             return False
         
-        # 3. Location filtering (multi-location logic)
+        # 3. Location filtering (FOOLPROOF approach)
         has_us = any(
             keyword in location
             for keyword in Config.US_LOCATION_KEYWORDS
         )
+        
+        # FOOLPROOF: Also check for state abbreviations with regex (catches any format)
+        if not has_us:
+            import re
+            # Match any US state abbreviation surrounded by word boundaries or punctuation
+            state_pattern = r'[\s,\-\(]?(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)[\s,\)\.]?'
+            if re.search(state_pattern, location.upper()):
+                has_us = True
         
         has_non_us = any(
             keyword in location
             for keyword in Config.NON_US_LOCATION_KEYWORDS
         )
         
-        # Exclude if non-US only (no US option)
+        # ONLY exclude if clearly non-US (has non-US keywords but no US keywords)
+        # Include everything else: US-only, multi-location, ambiguous, or empty
         if has_non_us and not has_us:
             return False
         

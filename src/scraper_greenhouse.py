@@ -110,23 +110,32 @@ class GreenhouseScraper:
             for keyword in Config.US_LOCATION_KEYWORDS
         )
         
+        # FOOLPROOF: Also check for state abbreviations with regex (catches any format)
+        if not has_us:
+            import re
+            # Match any US state abbreviation surrounded by word boundaries or punctuation
+            # Pattern: (comma/space/dash/start) + STATE + (comma/space/end/paren)
+            state_pattern = r'[\s,\-\(]?(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)[\s,\)\.]?'
+            if re.search(state_pattern, location.upper()):
+                has_us = True
+        
         # Check if location has any non-US indicators
         has_non_us = any(
             keyword in location
             for keyword in Config.NON_US_LOCATION_KEYWORDS
         )
         
-        # Decision logic:
-        # - If has US AND has non-US (e.g., "Chicago, Toronto") → Include (US option available)
-        # - If has US only → Include
-        # - If has non-US only → Exclude
-        # - If N/A/empty → Include (let LLM filter)
+        # Decision logic (FOOLPROOF approach):
+        # - If has non-US keywords BUT no US keywords → Exclude (clearly international)
+        # - If has US keywords (with or without non-US) → Include (US option available)
+        # - If has neither (e.g., ambiguous "Remote", "CA", empty) → Include (let LLM filter)
+        # This way, we only exclude jobs that are CLEARLY non-US, and include everything else
         
         if has_non_us and not has_us:
-            # Non-US only (e.g., "Toronto", "Berlin")
+            # Non-US only (e.g., "Toronto", "Berlin", "Canada")
             return False
         
-        # If has both or US-only or N/A → Include
+        # All other cases → Include (US-only, multi-location, ambiguous, or empty)
         
         # 5. Check recency using first_published (last 30 days)
         if 'first_published' in raw_data:
