@@ -47,7 +47,7 @@ class JobSpyScraper:
                 search_term=search_term,
                 location=location,
                 results_wanted=results_wanted,
-                hours_old=336,  # 14 days = 336 hours
+                hours_old=Config.LINKEDIN_HOURS_OLD,  # Last 24 hours for LinkedIn
                 country_indeed='USA',
                 linkedin_fetch_description=True
             )

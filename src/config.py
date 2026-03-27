@@ -256,7 +256,8 @@ class Config:
     DEDUP_WINDOW_DAYS = 30
     
     # Job filtering
-    MAX_JOB_AGE_DAYS = 14  # Last 14 days for fresh jobs
+    MAX_JOB_AGE_DAYS = 14  # Last 14 days for Greenhouse (has reliable dates)
+    LINKEDIN_HOURS_OLD = 24  # Last 24 hours for LinkedIn scraping (JobSpy, Apify)
     
     # Rate limit thresholds (Section 16)
     RATE_LIMIT_WARNING_THRESHOLD = 0.20  # 20%

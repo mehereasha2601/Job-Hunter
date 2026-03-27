@@ -46,7 +46,7 @@ class ApifyScraper:
                 actor_input = {
                     'query': query,
                     'country': 'us',
-                    'datePosted': 'month',  # Last 30 days
+                    'datePosted': 'today',  # Last 24 hours for LinkedIn/Google Jobs
                     'page': 1
                 }
                 
