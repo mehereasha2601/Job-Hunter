@@ -3,10 +3,9 @@ Apify Google Jobs scraper wrapper.
 Uses Apify's Google Jobs Scraper actor (Section 11 of spec.md).
 """
 
-import requests
 from typing import List, Dict
-import time
 from datetime import datetime
+from apify_client import ApifyClient
 
 from .config import Config
 
@@ -21,9 +20,8 @@ class ApifyScraper:
         Args:
             api_token: Apify API token
         """
-        self.api_token = api_token
-        self.actor_id = 'misceres/google-jobs-scraper'
-        self.base_url = 'https://api.apify.com/v2'
+        self.client = ApifyClient(api_token)
+        self.actor_id = 'igview-owner/google-jobs-scraper'
     
     def run_scraper(
         self,
@@ -34,133 +32,67 @@ class ApifyScraper:
         Run Google Jobs scraper actor.
         
         Args:
-            queries: List of search queries
-            max_results_per_query: Max results per query
+            queries: List of search queries (e.g., "Software Engineer Boston")
+            max_results_per_query: Max results per query (not used, actor returns ~10 per query)
         
         Returns:
-            List of job dicts
+            List of filtered job dicts
         """
-        jobs = []
+        all_jobs = []
         
-        try:
-            # Build actor input
-            actor_input = {
-                'queries': queries,
-                'maxConcurrency': 5,
-                'maxPagesPerQuery': max_results_per_query // 10,
-                'languageCode': 'en',
-                'countryCode': 'us'
-            }
-            
-            # Start actor run
-            run_url = f"{self.base_url}/acts/{self.actor_id}/runs?token={self.api_token}"
-            
-            print(f"Starting Apify actor for {len(queries)} queries...")
-            response = requests.post(run_url, json=actor_input, timeout=30)
-            
-            if response.status_code not in [200, 201]:
-                print(f"Error starting actor: {response.status_code}")
-                return jobs
-            
-            run_data = response.json()['data']
-            run_id = run_data['id']
-            
-            # Poll for completion
-            jobs = self._wait_for_results(run_id)
-        
-        except Exception as e:
-            print(f"Apify scraper error: {e}")
-        
-        return jobs
-    
-    def _wait_for_results(self, run_id: str, max_wait: int = 600) -> List[Dict]:
-        """
-        Wait for actor run to complete and fetch results.
-        
-        Args:
-            run_id: Actor run ID
-            max_wait: Max seconds to wait
-        
-        Returns:
-            List of jobs
-        """
-        start_time = time.time()
-        check_url = f"{self.base_url}/actor-runs/{run_id}?token={self.api_token}"
-        
-        while time.time() - start_time < max_wait:
+        for query in queries:
             try:
-                response = requests.get(check_url, timeout=30)
-                if response.status_code != 200:
-                    time.sleep(5)
-                    continue
+                # Build actor input
+                actor_input = {
+                    'query': query,
+                    'country': 'us',
+                    'datePosted': 'month',  # Last 30 days
+                    'page': 1
+                }
                 
-                run_data = response.json()['data']
-                status = run_data['status']
+                print(f"Running Apify actor for: {query}...")
                 
-                if status == 'SUCCEEDED':
-                    print(f"Actor run completed in {int(time.time() - start_time)}s")
-                    return self._fetch_dataset(run_data['defaultDatasetId'])
+                # Run actor and wait for results
+                run = self.client.actor(self.actor_id).call(run_input=actor_input)
                 
-                elif status in ['FAILED', 'ABORTED', 'TIMED-OUT']:
-                    print(f"Actor run {status}")
-                    return []
+                # Fetch results from dataset
+                raw_jobs = []
+                for item in self.client.dataset(run['defaultDatasetId']).iterate_items():
+                    raw_jobs.append(item)
                 
-                else:
-                    # Still running
-                    print(f"Actor running... ({status})")
-                    time.sleep(10)
+                # Normalize and filter
+                filtered_count = 0
+                for raw_job in raw_jobs:
+                    normalized = self.normalize_job(raw_job)
+                    
+                    if self._should_include_job(normalized):
+                        all_jobs.append(normalized)
+                        filtered_count += 1
+                
+                print(f"  Found {len(raw_jobs)} jobs, filtered to {filtered_count}")
             
             except Exception as e:
-                print(f"Error checking run status: {e}")
-                time.sleep(5)
+                print(f"  Error for query '{query}': {e}")
         
-        print(f"Actor run timeout after {max_wait}s")
-        return []
-    
-    def _fetch_dataset(self, dataset_id: str) -> List[Dict]:
-        """Fetch results from dataset and apply filtering."""
-        try:
-            dataset_url = f"{self.base_url}/datasets/{dataset_id}/items?token={self.api_token}"
-            response = requests.get(dataset_url, timeout=30)
-            
-            if response.status_code != 200:
-                return []
-            
-            items = response.json()
-            
-            # Normalize and filter jobs
-            normalized = []
-            for item in items:
-                job = self.normalize_job(item)
-                
-                # Apply filtering logic
-                if self._should_include_job(job):
-                    normalized.append(job)
-            
-            print(f"  Apify: Found {len(items)} jobs, filtered to {len(normalized)}")
-            return normalized
-        
-        except Exception as e:
-            print(f"Error fetching dataset: {e}")
-            return []
+        return all_jobs
     
     def normalize_job(self, job: Dict) -> Dict:
         """
-        Normalize Apify output to standard format.
+        Normalize Apify Google Jobs output to standard format.
         
         Args:
-            job: Raw job dict from Apify
+            job: Raw job dict from Apify (igview-owner/google-jobs-scraper)
         
         Returns:
             Normalized job dict
         """
         return {
-            'title': job.get('title', ''),
-            'company': job.get('companyName', ''),
-            'url': job.get('jobUrl', ''),
-            'source': 'google',
-            'description': job.get('description', ''),
-            'location': job.get('location', ''),
+            'title': job.get('jobTitle', ''),
+            'company': job.get('employerName', ''),
+            'url': job.get('jobApplyLink', ''),
+            'source': f"google ({job.get('jobPublisher', 'unknown')})",
+            'description': job.get('jobDescription', ''),
+            'location': job.get('jobLocation', ''),
             'raw_data': job
         }
     
@@ -210,14 +142,27 @@ class ApifyScraper:
         if has_non_us and not has_us:
             return False
         
-        # 4. Check recency (Google Jobs provides publishedDate)
-        date_field = raw_data.get('publishedDate') or raw_data.get('datePosted')
+        # 4. Check recency (Google Jobs provides jobPostedAt field)
+        date_field = raw_data.get('jobPostedAt') or raw_data.get('jobPostedAtTimestamp')
         if date_field:
             try:
-                # Google Jobs uses ISO format or various date strings
-                if isinstance(date_field, str):
+                # Handle timestamp (Unix timestamp in seconds)
+                if isinstance(date_field, (int, float)):
+                    posted_date = datetime.fromtimestamp(date_field)
+                    age_days = (datetime.now() - posted_date).days
+                    
+                    if age_days > Config.MAX_JOB_AGE_DAYS:
+                        return False
+                
+                # Handle string formats
+                elif isinstance(date_field, str):
                     if 'T' in date_field:
                         posted_date = datetime.fromisoformat(date_field.replace('Z', '+00:00'))
+                        now = datetime.now(posted_date.tzinfo) if posted_date.tzinfo else datetime.now()
+                        age_days = (now - posted_date).days
+                        
+                        if age_days > Config.MAX_JOB_AGE_DAYS:
+                            return False
                     elif 'ago' in date_field.lower():
                         # Parse "2 days ago", "1 week ago", etc.
                         parts = date_field.lower().split()
@@ -236,18 +181,6 @@ class ApifyScraper:
                             
                             if age_days > Config.MAX_JOB_AGE_DAYS:
                                 return False
-                    else:
-                        # Try parsing standard date formats
-                        for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d-%m-%Y']:
-                            try:
-                                posted_date = datetime.strptime(date_field, fmt)
-                                age_days = (datetime.now() - posted_date).days
-                                
-                                if age_days > Config.MAX_JOB_AGE_DAYS:
-                                    return False
-                                break
-                            except:
-                                continue
             except Exception as e:
                 pass  # If parsing fails, include the job
         
