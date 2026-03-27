@@ -12,19 +12,27 @@ export default function Login({ onLogin }) {
     setLoading(true);
 
     try {
-      // Set password in API client
-      setPassword(password);
+      // Test authentication with the actual API endpoint
+      const response = await fetch('http://localhost:8000/api/health', {
+        headers: {
+          'Authorization': 'Basic ' + btoa('user:' + password)
+        }
+      });
       
-      // Test with a health check
-      const response = await fetch('http://localhost:8000/api/health');
       if (response.ok) {
+        // Password works! Save it and login
+        setPassword(password);
         onLogin();
-      } else {
+      } else if (response.status === 401) {
         setError('Invalid password');
         setPasswordInput('');
+      } else {
+        // Other error (e.g., 500 from database)
+        const data = await response.json();
+        setError(data.detail || 'Server error. Check that Supabase is configured.');
       }
     } catch (err) {
-      setError('Connection error. Make sure the API server is running.');
+      setError('Connection error. Make sure the API server is running on port 8000.');
     } finally {
       setLoading(false);
     }
