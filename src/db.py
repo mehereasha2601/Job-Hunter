@@ -6,20 +6,39 @@ Schema from Section 13 of spec.md.
 
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
-from supabase import create_client, Client
 from src.config import Config
 import hashlib
+import requests
 
 
 class Database:
-    """Supabase database client for job storage and tracking."""
+    """Supabase database client using direct REST API calls."""
     
     def __init__(self):
-        """Initialize Supabase client."""
+        """Initialize Supabase REST API client."""
         if not Config.SUPABASE_URL or not Config.SUPABASE_KEY:
             raise ValueError("Supabase credentials not configured")
         
-        self.client: Client = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
+        self.base_url = f"{Config.SUPABASE_URL}/rest/v1"
+        self.headers = {
+            'apikey': Config.SUPABASE_KEY,
+            'Authorization': f'Bearer {Config.SUPABASE_KEY}',
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+        }
+    
+    def _query(self, method: str, endpoint: str, **kwargs) -> requests.Response:
+        """Make REST API request."""
+        url = f"{self.base_url}/{endpoint}"
+        
+        # Merge custom headers if provided
+        headers = {**self.headers}
+        if 'headers' in kwargs:
+            headers.update(kwargs.pop('headers'))
+        
+        response = requests.request(method, url, headers=headers, **kwargs)
+        response.raise_for_status()
+        return response
     
     @staticmethod
     def generate_job_id(url: str, company: str, title: str) -> str:
@@ -51,9 +70,11 @@ class Database:
         
         if existing:
             # Update updated_at timestamp
-            result = self.client.table('jobs').update({
-                'updated_at': datetime.now().isoformat()
-            }).eq('id', job_id).execute()
+            response = self._query(
+                'PATCH',
+                f'jobs?id=eq.{job_id}',
+                json={'updated_at': datetime.now().isoformat()}
+            )
             return existing
         
         # Insert new
@@ -65,44 +86,59 @@ class Database:
             'source': job.get('source'),
             'description': job.get('description'),
             'location': job.get('location'),
-            'date_posted': job.get('date_posted'),  # NEW - original posting date
+            'date_posted': job.get('date_posted'),
             'h1b_flag': job.get('h1b_flag', 'unknown'),
             'on_target_list': job.get('on_target_list', False),
             'status': 'seen'
         }
         
-        result = self.client.table('jobs').insert(job_data).execute()
-        return result.data[0] if result.data else None
+        response = self._query('POST', 'jobs', json=job_data)
+        data = response.json()
+        return data[0] if data else None
     
     def get_job(self, job_id: str) -> Optional[Dict]:
         """Get job by ID."""
-        result = self.client.table('jobs').select('*').eq('id', job_id).execute()
-        return result.data[0] if result.data else None
+        try:
+            response = self._query('GET', f'jobs?id=eq.{job_id}&select=*')
+            data = response.json()
+            return data[0] if data else None
+        except requests.exceptions.HTTPError:
+            return None
     
     def get_unscored_jobs(self) -> List[Dict]:
         """Get jobs that need scoring (status='seen', score=null)."""
-        result = self.client.table('jobs').select('*').eq('status', 'seen').is_('score', 'null').execute()
-        return result.data or []
+        response = self._query('GET', 'jobs?status=eq.seen&score=is.null&select=*')
+        return response.json() or []
     
     def update_job_score(self, job_id: str, score: float, h1b_flag: str) -> Dict:
         """Update job with relevance score."""
-        result = self.client.table('jobs').update({
-            'score': score,
-            'h1b_flag': h1b_flag,
-            'status': 'scored',
-            'updated_at': datetime.now().isoformat()
-        }).eq('id', job_id).execute()
-        return result.data[0] if result.data else None
+        response = self._query(
+            'PATCH',
+            f'jobs?id=eq.{job_id}',
+            json={
+                'score': score,
+                'h1b_flag': h1b_flag,
+                'status': 'scored',
+                'updated_at': datetime.now().isoformat()
+            }
+        )
+        data = response.json()
+        return data[0] if data else None
     
     def get_scored_jobs(self, min_score: float = 7.0, limit: int = 50) -> List[Dict]:
         """Get jobs scored above threshold, for digest email."""
-        result = self.client.table('jobs').select('*').eq('status', 'scored').gte('score', min_score).order('first_seen_at', desc=True).limit(limit).execute()
-        return result.data or []
+        response = self._query(
+            'GET',
+            f'jobs?status=eq.scored&score=gte.{min_score}&order=first_seen_at.desc&limit={limit}&select=*'
+        )
+        return response.json() or []
     
     def get_jobs_to_tailor(self, job_ids: List[str]) -> List[Dict]:
         """Get specific jobs by IDs for tailoring."""
-        result = self.client.table('jobs').select('*').in_('id', job_ids).execute()
-        return result.data or []
+        # Build OR query for multiple IDs
+        ids_param = ','.join(f'"{jid}"' for jid in job_ids)
+        response = self._query('GET', f'jobs?id=in.({ids_param})&select=*')
+        return response.json() or []
     
     def update_job_tailored(
         self,
@@ -113,16 +149,21 @@ class Database:
         md_path: str
     ) -> Dict:
         """Update job with tailored output links."""
-        result = self.client.table('jobs').update({
-            'status': 'tailored',
-            'tailored_at': datetime.now().isoformat(),
-            'resume_pdf_url': resume_pdf_url,
-            'doc_url': doc_url,
-            'email_doc_url': email_doc_url,
-            'md_path': md_path,
-            'updated_at': datetime.now().isoformat()
-        }).eq('id', job_id).execute()
-        return result.data[0] if result.data else None
+        response = self._query(
+            'PATCH',
+            f'jobs?id=eq.{job_id}',
+            json={
+                'status': 'tailored',
+                'tailored_at': datetime.now().isoformat(),
+                'resume_pdf_url': resume_pdf_url,
+                'doc_url': doc_url,
+                'email_doc_url': email_doc_url,
+                'md_path': md_path,
+                'updated_at': datetime.now().isoformat()
+            }
+        )
+        data = response.json()
+        return data[0] if data else None
     
     def update_job_status(self, job_id: str, status: str) -> Dict:
         """
@@ -137,41 +178,59 @@ class Database:
         if status == 'applied':
             data['applied_at'] = datetime.now().isoformat()
         
-        result = self.client.table('jobs').update(data).eq('id', job_id).execute()
-        return result.data[0] if result.data else None
+        response = self._query('PATCH', f'jobs?id=eq.{job_id}', json=data)
+        result = response.json()
+        return result[0] if result else None
     
     def mark_job_error(self, job_id: str, error: str) -> Dict:
         """Mark job with error for manual retry."""
-        result = self.client.table('jobs').update({
-            'error': error,
-            'updated_at': datetime.now().isoformat()
-        }).eq('id', job_id).execute()
-        return result.data[0] if result.data else None
+        response = self._query(
+            'PATCH',
+            f'jobs?id=eq.{job_id}',
+            json={'error': error, 'updated_at': datetime.now().isoformat()}
+        )
+        data = response.json()
+        return data[0] if data else None
     
     def get_recent_jobs(self, days: int = 7) -> List[Dict]:
         """Get jobs from last N days."""
         cutoff = (datetime.now() - timedelta(days=days)).isoformat()
-        result = self.client.table('jobs').select('*').gte('first_seen_at', cutoff).order('first_seen_at', desc=True).execute()
-        return result.data or []
+        response = self._query(
+            'GET',
+            f'jobs?first_seen_at=gte.{cutoff}&order=first_seen_at.desc&select=*'
+        )
+        return response.json() or []
     
     def find_duplicates(self, company: str, title: str, location: str) -> List[Dict]:
         """Find potential duplicate jobs by company + title + location."""
-        result = self.client.table('jobs').select('*').eq('company', company).eq('title', title).eq('location', location).execute()
-        return result.data or []
+        # URL encode parameters
+        import urllib.parse
+        company_enc = urllib.parse.quote(company)
+        title_enc = urllib.parse.quote(title)
+        location_enc = urllib.parse.quote(location)
+        
+        response = self._query(
+            'GET',
+            f'jobs?company=eq.{company_enc}&title=eq.{title_enc}&location=eq.{location_enc}&select=*'
+        )
+        return response.json() or []
     
     def mark_duplicate(self, job_id: str, duplicate_of: str) -> Dict:
         """Mark job as duplicate of another job."""
-        result = self.client.table('jobs').update({
-            'duplicate_of': duplicate_of,
-            'updated_at': datetime.now().isoformat()
-        }).eq('id', job_id).execute()
-        return result.data[0] if result.data else None
+        response = self._query(
+            'PATCH',
+            f'jobs?id=eq.{job_id}',
+            json={'duplicate_of': duplicate_of, 'updated_at': datetime.now().isoformat()}
+        )
+        data = response.json()
+        return data[0] if data else None
     
     def cleanup_old_jobs(self, days: int = 30):
         """Delete jobs older than N days (dedup window)."""
         cutoff = (datetime.now() - timedelta(days=days)).isoformat()
-        result = self.client.table('jobs').delete().lt('first_seen_at', cutoff).execute()
-        return len(result.data) if result.data else 0
+        response = self._query('DELETE', f'jobs?first_seen_at=lt.{cutoff}')
+        data = response.json()
+        return len(data) if data else 0
 
 
 # SQL Schema for reference (run manually in Supabase dashboard)

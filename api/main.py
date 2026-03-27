@@ -87,7 +87,7 @@ async def health_check():
     """Health check endpoint."""
     try:
         # Test database connection
-        result = db.client.table('jobs').select('id').limit(1).execute()
+        jobs = db.get_recent_jobs(days=1)
         return {
             "status": "healthy",
             "database": "connected",
@@ -121,37 +121,46 @@ async def list_jobs(
     - offset: Pagination offset
     """
     try:
-        # Build query
-        query = db.client.table('jobs').select('*')
+        # Build query parameters
+        params = []
+        params.append(f'select=*')
         
         # Apply filters
         if status_filter:
-            query = query.eq('status', status_filter)
+            params.append(f'status=eq.{status_filter}')
         if min_score is not None:
-            query = query.gte('score', min_score)
+            params.append(f'score=gte.{min_score}')
         if company:
-            query = query.ilike('company', f'%{company}%')
+            import urllib.parse
+            company_enc = urllib.parse.quote(f'%{company}%')
+            params.append(f'company=ilike.{company_enc}')
         if source:
-            query = query.eq('source', source)
+            params.append(f'source=eq.{source}')
         
         # Sorting
         if sort_by == "date_posted":
-            # Sort by date_posted desc (newest first), then by score
-            query = query.order('date_posted', desc=True, nullsfirst=False).order('score', desc=True)
+            params.append('order=date_posted.desc.nullslast,score.desc')
         elif sort_by == "first_seen_at":
-            query = query.order('first_seen_at', desc=True)
+            params.append('order=first_seen_at.desc')
         else:  # Default: score
-            # Order by score desc, then by date_posted desc
-            query = query.order('score', desc=True).order('date_posted', desc=True, nullsfirst=False)
+            params.append('order=score.desc.nullslast,date_posted.desc.nullslast')
         
         # Pagination
-        query = query.range(offset, offset + limit - 1)
+        end_range = offset + limit - 1
         
-        result = query.execute()
+        # Build URL
+        query_string = '&'.join(params)
+        response = db._query('GET', f'jobs?{query_string}', headers={
+            **db.headers,
+            'Range': f'{offset}-{end_range}',
+            'Prefer': 'count=exact'
+        })
+        
+        jobs = response.json()
         
         return {
-            "jobs": result.data,
-            "count": len(result.data),
+            "jobs": jobs,
+            "count": len(jobs),
             "offset": offset,
             "limit": limit
         }
@@ -191,12 +200,9 @@ async def update_job_status(
     
     try:
         # Update status in database
-        result = db.client.table('jobs').update({
-            'status': update.status,
-            'updated_at': datetime.now().isoformat()
-        }).eq('id', job_id).execute()
+        updated_job = db.update_job_status(job_id, update.status)
         
-        if not result.data:
+        if not updated_job:
             raise HTTPException(status_code=404, detail="Job not found")
         
         return {
@@ -216,8 +222,7 @@ async def get_stats(_: str = Depends(verify_password)) -> StatsResponse:
     """Get dashboard statistics."""
     try:
         # Fetch all jobs
-        result = db.client.table('jobs').select('*').execute()
-        jobs = result.data
+        jobs = db.get_recent_jobs(days=365)  # Get all jobs from last year
         
         # Calculate stats
         total_scraped = len(jobs)
@@ -328,11 +333,12 @@ async def trigger_tailoring(
 async def list_outputs(_: str = Depends(verify_password)):
     """List all tailored jobs with output links."""
     try:
-        # Get all jobs that have been tailored
-        result = db.client.table('jobs').select('*').not_.is_('tailored_at', 'null').order('tailored_at', desc=True).execute()
+        # Build query for tailored jobs
+        response = db._query('GET', 'jobs?tailored_at=not.is.null&order=tailored_at.desc&select=*')
+        jobs_data = response.json()
         
         tailored_jobs = []
-        for job in result.data:
+        for job in jobs_data:
             tailored_jobs.append({
                 "id": job['id'],
                 "title": job['title'],
