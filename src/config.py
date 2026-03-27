@@ -94,7 +94,10 @@ class Config:
         'AI Engineer',
         'Machine Learning Engineer',
         'Backend Engineer',
+        'Frontend Engineer',
         'Full Stack Engineer',
+        'API Engineer',  # Backend / API Engineer
+        'SDK Engineer',  # SDK development roles
         # Additional ML/AI roles
         'Data Engineer',
         'Machine Learning Scientist',
@@ -164,21 +167,65 @@ class Config:
     US_LOCATION_KEYWORDS = [
         'united states',
         'usa',
-        'us',
-        'remote',
-        'boston',
-        'san francisco',
+        'us-',  # US-SF, US-NYC, US-Remote
+        ', us',  # "San Francisco, US"
+        'remote in us',
+        'remote us',
+        'us remote',
+        'us,',  # "NYC, US, Canada"
+        'nyc',
         'new york',
+        'san francisco',
+        'sf,',  # "SF, NYC"
         'seattle',
+        'sea,',  # "SEA, SF"
+        'boston',
         'austin',
         'denver',
         'chicago',
+        'chi,',  # "CHI, NYC"
         'los angeles',
         'california',
         'massachusetts',
         'washington',
         'texas',
-        'colorado'
+        'colorado',
+        'portland',
+        'miami',
+        'atlanta',
+        'philadelphia',
+        'washington dc'
+    ]
+    
+    # Exclude non-US locations
+    NON_US_LOCATION_KEYWORDS = [
+        'canada',
+        'toronto',
+        'vancouver',
+        'montreal',
+        'can-',  # CAN-Remote
+        'dublin',
+        'london',
+        'berlin',
+        'paris',
+        'singapore',
+        'bengaluru',
+        'bangalore',
+        'india',
+        'tokyo',
+        'mexico',
+        'brazil',
+        'germany',
+        'france',
+        'uk',
+        'ireland',
+        'australia',
+        'sydney',
+        'melbourne',
+        'japan',
+        'korea',
+        'china',
+        'hong kong'
     ]
     
     # H1B filter keywords (Section 4)
@@ -209,7 +256,7 @@ class Config:
     DEDUP_WINDOW_DAYS = 30
     
     # Job filtering
-    MAX_JOB_AGE_DAYS = 2  # Only jobs posted in last 2 days (48 hours)
+    MAX_JOB_AGE_DAYS = 14  # Last 14 days for fresh jobs
     
     # Rate limit thresholds (Section 16)
     RATE_LIMIT_WARNING_THRESHOLD = 0.20  # 20%

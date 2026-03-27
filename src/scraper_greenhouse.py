@@ -78,12 +78,14 @@ class GreenhouseScraper:
         
         Filters:
         - Job title match
-        - US location
+        - US location (exclude Canada-only or international-only)
         - Exclude senior roles
-        - Posted within last 2 days (if data available)
+        - Exclude manager roles
+        - Posted within last 30 days (using first_published)
         """
         title = job.get('title', '').lower()
         location = job.get('location', '').lower()
+        raw_data = job.get('raw_data', {})
         
         # 1. Check job title matches (Software Engineer, ML Engineer, etc.)
         title_match = any(
@@ -93,7 +95,7 @@ class GreenhouseScraper:
         if not title_match:
             return False
         
-        # 2. Exclude senior roles
+        # 2. Exclude senior roles (check both title and description)
         is_senior = any(
             keyword.lower() in title
             for keyword in Config.EXCLUDE_SENIORITY_KEYWORDS
@@ -101,23 +103,45 @@ class GreenhouseScraper:
         if is_senior:
             return False
         
-        # 3. Check US location
-        is_us_location = any(
+        # 3. Location filtering (complex logic for multi-location jobs)
+        # Check if location has any US indicators
+        has_us = any(
             keyword in location
             for keyword in Config.US_LOCATION_KEYWORDS
         )
-        if not is_us_location:
+        
+        # Check if location has any non-US indicators
+        has_non_us = any(
+            keyword in location
+            for keyword in Config.NON_US_LOCATION_KEYWORDS
+        )
+        
+        # Decision logic:
+        # - If has US AND has non-US (e.g., "Chicago, Toronto") → Include (US option available)
+        # - If has US only → Include
+        # - If has non-US only → Exclude
+        # - If N/A/empty → Include (let LLM filter)
+        
+        if has_non_us and not has_us:
+            # Non-US only (e.g., "Toronto", "Berlin")
             return False
         
-        # 4. Check recency (if posted_at available)
-        if 'posted_at' in job.get('raw_data', {}):
+        # If has both or US-only or N/A → Include
+        
+        # 5. Check recency using first_published (last 30 days)
+        if 'first_published' in raw_data:
             try:
-                posted_at_str = job['raw_data']['posted_at']
-                posted_at = datetime.fromisoformat(posted_at_str.replace('Z', '+00:00'))
-                age = datetime.now(posted_at.tzinfo) - posted_at
-                if age.days > Config.MAX_JOB_AGE_DAYS:
-                    return False
-            except:
+                from datetime import datetime
+                published_str = raw_data['first_published']
+                # Parse ISO format: 2025-09-02T18:26:14-04:00
+                if 'T' in published_str:
+                    published_date = datetime.fromisoformat(published_str.replace('Z', '+00:00'))
+                    now = datetime.now(published_date.tzinfo) if published_date.tzinfo else datetime.now()
+                    age_days = (now - published_date).days
+                    
+                    if age_days > Config.MAX_JOB_AGE_DAYS:
+                        return False
+            except Exception as e:
                 pass  # If parsing fails, include the job
         
         return True
