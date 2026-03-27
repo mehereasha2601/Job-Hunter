@@ -2,7 +2,7 @@ name: Scrape JobSpy (LinkedIn/Indeed/Zip)
 
 on:
   schedule:
-    # Once daily ~8:00 AM US Eastern (12:00 UTC during EDT), Friday & Saturday only
+    # Once daily around 8 AM ET, Friday and Saturday
     - cron: '0 12 * * 5,6'
   workflow_dispatch:  # Manual trigger
 
