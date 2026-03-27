@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f9fafb;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+.score-badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.score-high {
+  @apply bg-green-100 text-green-800;
+}
+
+.score-medium {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.score-low {
+  @apply bg-gray-100 text-gray-800;
+}
+
+.status-badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.status-seen { @apply bg-gray-100 text-gray-800; }
+.status-scored { @apply bg-blue-100 text-blue-800; }
+.status-tailored { @apply bg-purple-100 text-purple-800; }
+.status-applied { @apply bg-green-100 text-green-800; }
+.status-response { @apply bg-yellow-100 text-yellow-800; }
+.status-interview { @apply bg-indigo-100 text-indigo-800; }
+.status-offer { @apply bg-pink-100 text-pink-800; }
+.status-rejected { @apply bg-red-100 text-red-800; }
