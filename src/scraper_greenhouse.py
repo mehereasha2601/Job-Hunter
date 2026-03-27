@@ -165,6 +165,13 @@ class GreenhouseScraper:
         # Description can be in 'content' or need separate fetch
         description = job.get('content', '')
         
+        # Extract date_posted from first_published or posted_at
+        date_posted = None
+        if 'first_published' in job:
+            date_posted = job['first_published']
+        elif 'posted_at' in job:
+            date_posted = job['posted_at']
+        
         return {
             'title': title,
             'company': company_name,
@@ -172,6 +179,7 @@ class GreenhouseScraper:
             'source': 'greenhouse',
             'description': description,
             'location': location,
+            'date_posted': date_posted,  # NEW - original posting date
             'raw_data': job
         }
     

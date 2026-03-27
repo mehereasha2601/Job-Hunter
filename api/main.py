@@ -103,6 +103,7 @@ async def list_jobs(
     min_score: Optional[float] = Query(None, ge=0, le=10),
     company: Optional[str] = None,
     source: Optional[str] = None,
+    sort_by: str = Query("score", regex="^(score|date_posted|first_seen_at)$"),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     _: str = Depends(verify_password)
@@ -115,6 +116,7 @@ async def list_jobs(
     - min_score: Minimum score threshold
     - company: Filter by company name (case-insensitive partial match)
     - source: Filter by job source
+    - sort_by: Sort field (score, date_posted, first_seen_at) - defaults to score
     - limit: Maximum number of results
     - offset: Pagination offset
     """
@@ -132,8 +134,15 @@ async def list_jobs(
         if source:
             query = query.eq('source', source)
         
-        # Order by score desc, then by first_seen_at desc
-        query = query.order('score', desc=True).order('first_seen_at', desc=True)
+        # Sorting
+        if sort_by == "date_posted":
+            # Sort by date_posted desc (newest first), then by score
+            query = query.order('date_posted', desc=True, nullsfirst=False).order('score', desc=True)
+        elif sort_by == "first_seen_at":
+            query = query.order('first_seen_at', desc=True)
+        else:  # Default: score
+            # Order by score desc, then by date_posted desc
+            query = query.order('score', desc=True).order('date_posted', desc=True, nullsfirst=False)
         
         # Pagination
         query = query.range(offset, offset + limit - 1)

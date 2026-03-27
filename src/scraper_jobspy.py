@@ -179,6 +179,7 @@ class JobSpyScraper:
                 'source': site_name,
                 'description': job.description or '',
                 'location': location_str,
+                'date_posted': str(job.date_posted) if job.date_posted else None,  # NEW - extract to top level
                 'raw_data': {
                     'date_posted': str(job.date_posted) if job.date_posted else None,
                     'is_remote': job.is_remote,
@@ -200,6 +201,7 @@ class JobSpyScraper:
             'source': source_mapping.get(job.get('site', ''), 'jobspy'),
             'description': job.get('description', ''),
             'location': job.get('location', ''),
+            'date_posted': str(job.get('date_posted')) if job.get('date_posted') else None,  # NEW
             'raw_data': job
         }
     

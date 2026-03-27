@@ -72,20 +72,48 @@ Health check - tests database connection.
 ```
 
 #### `GET /api/jobs`
-List all jobs with optional filters.
+List all jobs with optional filters and sorting.
 
 **Query Parameters:**
 - `status` - Filter by status (seen, scored, tailored, applied, etc.)
 - `min_score` - Minimum score threshold (0-10)
 - `company` - Filter by company name (partial match)
 - `source` - Filter by source (greenhouse, linkedin, etc.)
+- `sort_by` - Sort field: `score`, `date_posted`, `first_seen_at` (default: score)
 - `limit` - Max results (default: 100, max: 500)
 - `offset` - Pagination offset (default: 0)
+
+**Examples:**
+```bash
+# Get highest scored jobs
+GET /api/jobs?min_score=7&sort_by=score
+
+# Get newest jobs posted
+GET /api/jobs?sort_by=date_posted&limit=50
+
+# Get recent high-scoring jobs
+GET /api/jobs?min_score=8&sort_by=date_posted
+
+# Filter by company and status
+GET /api/jobs?company=Stripe&status=scored
+```
 
 **Response:**
 ```json
 {
-  "jobs": [...],
+  "jobs": [
+    {
+      "id": "abc123",
+      "title": "Software Engineer",
+      "company": "Stripe",
+      "location": "San Francisco, CA",
+      "date_posted": "2026-03-26T18:00:01.107406",
+      "score": 9.0,
+      "status": "scored",
+      "first_seen_at": "2026-03-26T19:00:00",
+      ...
+    }
+  ],
   "count": 50,
   "offset": 0,
   "limit": 100

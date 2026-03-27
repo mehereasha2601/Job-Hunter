@@ -86,6 +86,42 @@ class ApifyScraper:
         Returns:
             Normalized job dict
         """
+        # Extract date_posted from jobPostedAt field and normalize to ISO format
+        date_posted = None
+        if 'jobPostedAt' in job:
+            date_str = job['jobPostedAt']
+            if date_str:
+                try:
+                    from datetime import datetime, timedelta
+                    # Parse relative time strings like "5 hours ago", "2 days ago"
+                    if 'ago' in date_str.lower():
+                        parts = date_str.lower().split()
+                        if len(parts) >= 2:
+                            num = int(parts[0])
+                            unit = parts[1]
+                            
+                            if 'hour' in unit:
+                                date_posted = (datetime.now() - timedelta(hours=num)).isoformat()
+                            elif 'day' in unit:
+                                date_posted = (datetime.now() - timedelta(days=num)).isoformat()
+                            elif 'week' in unit:
+                                date_posted = (datetime.now() - timedelta(weeks=num)).isoformat()
+                    elif 'T' in date_str:
+                        # Already ISO format
+                        date_posted = date_str
+                except:
+                    date_posted = date_str  # Store as-is if parsing fails
+        
+        elif 'jobPostedAtTimestamp' in job:
+            # Convert Unix timestamp to ISO format
+            try:
+                from datetime import datetime
+                timestamp = job['jobPostedAtTimestamp']
+                if isinstance(timestamp, (int, float)):
+                    date_posted = datetime.fromtimestamp(timestamp).isoformat()
+            except:
+                pass
+        
         return {
             'title': job.get('jobTitle', ''),
             'company': job.get('employerName', ''),
@@ -93,6 +129,7 @@ class ApifyScraper:
             'source': f"google ({job.get('jobPublisher', 'unknown')})",
             'description': job.get('jobDescription', ''),
             'location': job.get('jobLocation', ''),
+            'date_posted': date_posted,  # Normalized to ISO format
             'raw_data': job
         }
     

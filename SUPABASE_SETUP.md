@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   source TEXT,  -- 'linkedin' | 'indeed' | 'greenhouse' | 'google' | 'ziprecruiter'
   description TEXT,
   location TEXT,
+  date_posted TIMESTAMPTZ,  -- When the job was originally posted by company
   score REAL,
   h1b_flag TEXT,  -- 'confirmed' | 'unknown' | 'blocked'
   on_target_list BOOLEAN DEFAULT false,
@@ -56,6 +57,7 @@ CREATE INDEX IF NOT EXISTS idx_jobs_score ON jobs(score);
 CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company);
 CREATE INDEX IF NOT EXISTS idx_jobs_first_seen ON jobs(first_seen_at);
 CREATE INDEX IF NOT EXISTS idx_jobs_source ON jobs(source);
+CREATE INDEX IF NOT EXISTS idx_jobs_date_posted ON jobs(date_posted);
 ```
 
 You should see: "Success. No rows returned"
