@@ -21,7 +21,7 @@ class ApifyScraper:
             api_token: Apify API token
         """
         self.client = ApifyClient(api_token)
-        self.actor_id = 'igview-owner/google-jobs-scraper'
+        self.actor_id = 'johnvc/google-jobs-scraper'  # Most popular Google Jobs scraper
     
     def run_scraper(
         self,
