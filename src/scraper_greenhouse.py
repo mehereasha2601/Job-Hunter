@@ -26,7 +26,7 @@ class GreenhouseScraper:
         
         Args:
             company_name: Company name
-            board_url: Base URL of Greenhouse board
+            board_url: Base URL of Greenhouse board (e.g., https://boards.greenhouse.io/stripe)
         
         Returns:
             List of job dicts
@@ -34,32 +34,37 @@ class GreenhouseScraper:
         jobs = []
         
         try:
-            # Try JSON API endpoint first (most Greenhouse boards have this)
-            api_url = f"{board_url}/jobs"
-            params = {'content': 'true'}
+            # Extract company identifier from board_url
+            # e.g., https://boards.greenhouse.io/stripe -> stripe
+            company_id = board_url.rstrip('/').split('/')[-1]
             
-            response = self.session.get(api_url, params=params, timeout=15)
+            # Use the official Greenhouse Boards API
+            api_url = f"https://boards-api.greenhouse.io/v1/boards/{company_id}/jobs"
             
-            if response.status_code == 200 and 'application/json' in response.headers.get('Content-Type', ''):
-                # Parse JSON response
+            response = self.session.get(api_url, timeout=15)
+            
+            if response.status_code == 200:
                 data = response.json()
                 
-                if isinstance(data, dict) and 'jobs' in data:
-                    job_list = data['jobs']
-                elif isinstance(data, list):
-                    job_list = data
-                else:
-                    job_list = []
+                # API returns {"jobs": [...]}
+                job_list = data.get('jobs', [])
+                
+                print(f"  Found {len(job_list)} jobs from {company_name}")
                 
                 for job in job_list:
-                    jobs.append(self._parse_job_json(job, company_name, board_url))
+                    parsed_job = self._parse_job_json(job, company_name, board_url)
+                    if parsed_job:
+                        jobs.append(parsed_job)
             
             else:
+                print(f"  API returned {response.status_code} for {company_name}")
                 # Fallback: scrape HTML
                 jobs = self._scrape_html(company_name, board_url)
         
         except Exception as e:
             print(f"Error scraping {company_name}: {e}")
+            import traceback
+            traceback.print_exc()
         
         return jobs
     
