@@ -6,8 +6,10 @@ Scrapes from Top 40 company Greenhouse boards (Section 3 of spec.md).
 import requests
 from bs4 import BeautifulSoup
 from typing import List, Dict, Optional
+from datetime import datetime, timedelta
 import time
 import re
+from src.config import Config
 
 
 class GreenhouseScraper:
@@ -53,8 +55,10 @@ class GreenhouseScraper:
                 
                 for job in job_list:
                     parsed_job = self._parse_job_json(job, company_name, board_url)
-                    if parsed_job:
+                    if parsed_job and self._should_include_job(parsed_job):
                         jobs.append(parsed_job)
+                
+                print(f"  Filtered to {len(jobs)} relevant jobs")
             
             else:
                 print(f"  API returned {response.status_code} for {company_name}")
@@ -67,6 +71,56 @@ class GreenhouseScraper:
             traceback.print_exc()
         
         return jobs
+    
+    def _should_include_job(self, job: Dict) -> bool:
+        """
+        Check if job meets filtering criteria (Section 4 of spec).
+        
+        Filters:
+        - Job title match
+        - US location
+        - Exclude senior roles
+        - Posted within last 2 days (if data available)
+        """
+        title = job.get('title', '').lower()
+        location = job.get('location', '').lower()
+        
+        # 1. Check job title matches (Software Engineer, ML Engineer, etc.)
+        title_match = any(
+            target.lower() in title
+            for target in Config.JOB_TITLES
+        )
+        if not title_match:
+            return False
+        
+        # 2. Exclude senior roles
+        is_senior = any(
+            keyword.lower() in title
+            for keyword in Config.EXCLUDE_SENIORITY_KEYWORDS
+        )
+        if is_senior:
+            return False
+        
+        # 3. Check US location
+        is_us_location = any(
+            keyword in location
+            for keyword in Config.US_LOCATION_KEYWORDS
+        )
+        if not is_us_location:
+            return False
+        
+        # 4. Check recency (if posted_at available)
+        if 'posted_at' in job.get('raw_data', {}):
+            try:
+                posted_at_str = job['raw_data']['posted_at']
+                posted_at = datetime.fromisoformat(posted_at_str.replace('Z', '+00:00'))
+                age = datetime.now(posted_at.tzinfo) - posted_at
+                if age.days > Config.MAX_JOB_AGE_DAYS:
+                    return False
+            except:
+                pass  # If parsing fails, include the job
+        
+        return True
     
     def _parse_job_json(self, job: Dict, company_name: str, board_url: str) -> Dict:
         """Parse job from Greenhouse JSON API."""

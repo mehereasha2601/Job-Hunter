@@ -96,10 +96,50 @@ class Config:
         'Full Stack Engineer'
     ]
     
+    # Exclude senior roles (Section 4 - Entry/Mid level only)
+    EXCLUDE_SENIORITY_KEYWORDS = [
+        'senior',
+        'sr.',
+        'staff',
+        'principal',
+        'lead',
+        'director',
+        'vp',
+        'vice president',
+        'head of',
+        'chief',
+        '5+ years',
+        '5 years',
+        '6+ years',
+        '7+ years',
+        '8+ years'
+    ]
+    
     LOCATIONS = [
         'Boston, MA',
         'Remote',
         'United States'
+    ]
+    
+    # US location keywords (must contain at least one)
+    US_LOCATION_KEYWORDS = [
+        'united states',
+        'usa',
+        'us',
+        'remote',
+        'boston',
+        'san francisco',
+        'new york',
+        'seattle',
+        'austin',
+        'denver',
+        'chicago',
+        'los angeles',
+        'california',
+        'massachusetts',
+        'washington',
+        'texas',
+        'colorado'
     ]
     
     # H1B filter keywords (Section 4)
@@ -128,6 +168,9 @@ class Config:
     
     # Dedup window (Section 13)
     DEDUP_WINDOW_DAYS = 30
+    
+    # Job filtering
+    MAX_JOB_AGE_DAYS = 2  # Only jobs posted in last 2 days (48 hours)
     
     # Rate limit thresholds (Section 16)
     RATE_LIMIT_WARNING_THRESHOLD = 0.20  # 20%
