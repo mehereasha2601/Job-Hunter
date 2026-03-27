@@ -6,8 +6,7 @@ Section 10 of spec.md.
 import time
 from typing import List, Dict
 from datetime import datetime, timedelta
-# Commented out for Phase 1 - uncomment when ready for Phase 2
-# from python_jobspy import scrape_jobs
+from jobspy import scrape_jobs
 
 from .config import Config
 
@@ -41,32 +40,38 @@ class JobSpyScraper:
         jobs = []
         
         try:
-            # Uncomment when python-jobspy is installed
-            # df = scrape_jobs(
-            #     site_name=site_name,
-            #     search_term=search_term,
-            #     location=location,
-            #     results_wanted=results_wanted,
-            #     hours_old=72,
-            #     country_indeed='USA',
-            #     linkedin_fetch_description=True
-            # )
-            # 
-            # if df is not None and not df.empty:
-            #     raw_jobs = df.to_dict('records')
-            #     
-            #     # Normalize and filter jobs
-            #     for raw_job in raw_jobs:
-            #         normalized = self.normalize_job(raw_job)
-            #         
-            #         # Apply filtering logic
-            #         if self._should_include_job(normalized):
-            #             jobs.append(normalized)
-            #     
-            #     print(f"  JobSpy: Found {len(raw_jobs)} jobs, filtered to {len(jobs)}")
+            print(f"JobSpy: Scraping {search_term} in {location} from {site_name}...")
             
-            print(f"JobSpy: Would scrape {search_term} in {location} from {site_name}")
-            print("(python-jobspy currently disabled for Phase 1)")
+            result = scrape_jobs(
+                site_name=site_name,
+                search_term=search_term,
+                location=location,
+                results_wanted=results_wanted,
+                hours_old=336,  # 14 days = 336 hours
+                country_indeed='USA',
+                linkedin_fetch_description=True
+            )
+            
+            # Handle both DataFrame (full version) and list (mini version)
+            raw_jobs = []
+            if result is not None:
+                if hasattr(result, 'empty'):  # DataFrame
+                    if not result.empty:
+                        raw_jobs = result.to_dict('records')
+                elif isinstance(result, list):  # List (mini version)
+                    raw_jobs = result
+                
+                # Normalize and filter jobs
+                for raw_job in raw_jobs:
+                    normalized = self.normalize_job(raw_job)
+                    
+                    # Apply filtering logic
+                    if self._should_include_job(normalized):
+                        jobs.append(normalized)
+                
+                print(f"  Found {len(raw_jobs)} jobs, filtered to {len(jobs)}")
+            else:
+                print(f"  No jobs returned")
         
         except Exception as e:
             print(f"JobSpy error: {e}")
@@ -107,16 +112,81 @@ class JobSpyScraper:
         
         return all_jobs
     
-    def normalize_job(self, job: Dict) -> Dict:
+    def normalize_job(self, job) -> Dict:
         """
         Normalize JobSpy output to standard format.
+        Handles both dict (full version) and JobPost object (mini version).
         
         Args:
-            job: Raw job dict from JobSpy
+            job: Raw job dict or JobPost object from JobSpy
         
         Returns:
             Normalized job dict matching our schema
         """
+        # Handle JobPost object (mini version)
+        if hasattr(job, 'title'):
+            location_str = ''
+            if job.location:
+                # Location is a Location object with city, state, country
+                parts = []
+                if hasattr(job.location, 'city') and job.location.city:
+                    city = job.location.city
+                    # Handle tuple (city, ?) format
+                    if isinstance(city, tuple):
+                        parts.append(str(city[0]))
+                    else:
+                        parts.append(str(city))
+                
+                if hasattr(job.location, 'state') and job.location.state:
+                    state = job.location.state
+                    if isinstance(state, tuple):
+                        parts.append(str(state[0]))
+                    else:
+                        parts.append(str(state))
+                
+                if hasattr(job.location, 'country') and job.location.country:
+                    country = job.location.country
+                    # Skip 'worldwide' country indicator
+                    country_str = ''
+                    if hasattr(country, 'name'):
+                        # It's an enum, use name (e.g., "WORLDWIDE", "USA")
+                        country_str = str(country.name).lower()
+                    elif isinstance(country, tuple):
+                        country_str = str(country[0]).lower()
+                    else:
+                        country_str = str(country).lower()
+                    
+                    # Only add if it's a real country (not worldwide)
+                    if country_str not in ['worldwide', 'www', '']:
+                        parts.append(country_str.upper() if len(country_str) <= 3 else country_str.title())
+                
+                location_str = ', '.join(parts)
+            
+            # Get site name for source
+            site_name = 'jobspy'
+            if hasattr(job, 'job_url') and job.job_url:
+                if 'linkedin' in job.job_url:
+                    site_name = 'linkedin'
+                elif 'indeed' in job.job_url:
+                    site_name = 'indeed'
+                elif 'ziprecruiter' in job.job_url:
+                    site_name = 'ziprecruiter'
+            
+            return {
+                'title': job.title or '',
+                'company': job.company_name or '',
+                'url': job.job_url or '',
+                'source': site_name,
+                'description': job.description or '',
+                'location': location_str,
+                'raw_data': {
+                    'date_posted': str(job.date_posted) if job.date_posted else None,
+                    'is_remote': job.is_remote,
+                    'job_type': [str(jt.value) if hasattr(jt, 'value') else str(jt) for jt in (job.job_type or [])]
+                }
+            }
+        
+        # Handle dict (full version)
         source_mapping = {
             'linkedin': 'linkedin',
             'indeed': 'indeed',

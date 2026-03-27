@@ -7,7 +7,7 @@ python-dotenv>=1.0.0
 supabase>=2.0.0
 
 # Phase 2 - Job scraping
-# python-jobspy>=1.1.36  # Keep commented due to numpy conflicts - enable when needed
+python-jobspy-mini>=1.1.53  # Mini version (no numpy conflicts, works with Python 3.13)
 apify-client>=2.5.0  # Google Jobs scraper via Apify
 
 # Phase 2 - Google API (for Docs creation)
