@@ -23,7 +23,13 @@ function App() {
         onLogout={() => setAuthenticated(false)}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main
+        className={
+          currentView === 'jobs'
+            ? 'w-full max-w-none px-4 sm:px-6 lg:px-8 py-8'
+            : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'
+        }
+      >
         {currentView === 'jobs' && <JobTable />}
         {currentView === 'dashboard' && <Dashboard />}
         {currentView === 'outputs' && <OutputsViewer />}

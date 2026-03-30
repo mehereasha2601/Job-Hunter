@@ -67,6 +67,7 @@ class JobScorer:
 You will score jobs 1-10 based on how well they match the candidate's background.
 
 Scoring criteria (in priority order):
+0. Employment type - The candidate wants full-time W2 software roles only. If the role is clearly an internship, co-op, part-time, contract-to-hire only, or similarly not a standard full-time position, assign SCORE: 1 regardless of other factors.
 1. Experience Level (35%) - Entry/mid-level roles only (0-3 years). Reject if requires 4+ years.
 2. H1B friendliness (25%) - Company on H1B sponsor list, no blocking language
 3. Tech stack match (20%) - Python, FastAPI, GCP, ML tools, PyTorch, TensorFlow, backend tech

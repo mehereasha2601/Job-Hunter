@@ -81,12 +81,15 @@ class GreenhouseScraper:
         - US location (exclude Canada-only or international-only)
         - Exclude senior roles
         - Exclude manager roles
-        - Posted within last 30 days (using first_published)
+        - Posted within last MAX_JOB_AGE_DAYS (first_published required; no date = exclude)
         """
         title = job.get('title', '').lower()
         location = job.get('location', '').lower()
         raw_data = job.get('raw_data', {})
-        
+
+        if Config.title_is_non_fulltime(job.get('title', '')):
+            return False
+
         # 1. Check job title matches (Software Engineer, ML Engineer, etc.)
         title_match = any(
             target.lower() in title
@@ -113,9 +116,9 @@ class GreenhouseScraper:
         # FOOLPROOF: Also check for state abbreviations with regex (catches any format)
         if not has_us:
             import re
-            # Match any US state abbreviation surrounded by word boundaries or punctuation
-            # Pattern: (comma/space/dash/start) + STATE + (comma/space/end/paren)
-            state_pattern = r'[\s,\-\(]?(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)[\s,\)\.]?'
+            # Use strict word boundaries so we don't match state codes inside words
+            # (e.g. "INDIA" should not match "IN", "LONDON" should not match "ND")
+            state_pattern = r'\b(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\b'
             if re.search(state_pattern, location.upper()):
                 has_us = True
         
@@ -137,22 +140,18 @@ class GreenhouseScraper:
         
         # All other cases → Include (US-only, multi-location, ambiguous, or empty)
         
-        # 5. Check recency using first_published (last 30 days)
-        if 'first_published' in raw_data:
-            try:
-                from datetime import datetime
-                published_str = raw_data['first_published']
-                # Parse ISO format: 2025-09-02T18:26:14-04:00
-                if 'T' in published_str:
-                    published_date = datetime.fromisoformat(published_str.replace('Z', '+00:00'))
-                    now = datetime.now(published_date.tzinfo) if published_date.tzinfo else datetime.now()
-                    age_days = (now - published_date).days
-                    
-                    if age_days > Config.MAX_JOB_AGE_DAYS:
-                        return False
-            except Exception as e:
-                pass  # If parsing fails, include the job
-        
+        # 5. Recency — Greenhouse API must provide first_published; unparseable or missing = exclude
+        from src.job_date_utils import age_days_since_posted, parse_iso_datetime
+
+        published_str = raw_data.get('first_published')
+        if not published_str or not isinstance(published_str, str):
+            return False
+        published_date = parse_iso_datetime(published_str)
+        if published_date is None:
+            return False
+        if age_days_since_posted(published_date) > Config.MAX_JOB_AGE_DAYS:
+            return False
+
         return True
     
     def _parse_job_json(self, job: Dict, company_name: str, board_url: str) -> Dict:

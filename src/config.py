@@ -4,7 +4,8 @@ All settings, API keys, and constants in one place.
 """
 
 import os
-from typing import List, Dict
+import re
+from typing import List, Dict, Tuple
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -132,9 +133,6 @@ class Config:
         'Junior Software Engineer',
         'Junior Developer',
         'Entry Level',  # Catches "Entry Level Software Developer"
-        # Internships
-        'Intern',  # Catches all internship titles
-        'Software Intern',
         # QA/Testing roles
         'Test Engineer',
         'QA Engineer',
@@ -189,7 +187,40 @@ class Config:
         'engineer 4',
         'engineer 5'
     ]
-    
+
+    # Full-time W2-style roles only: exclude internships, co-ops, part-time, etc.
+    # Used by scrapers (pre-storage) and scorer step (existing rows).
+    _NON_FULLTIME_TITLE_PATTERNS: Tuple = tuple(
+        [
+            re.compile(r"\bintern(ship)?s?\b", re.I),
+            re.compile(r"\bco[- ]?op(s)?\b", re.I),
+            re.compile(r"\bpart[- ]time\b", re.I),
+            re.compile(r"\bapprentice(ship)?s?\b", re.I),
+            re.compile(r"\breturnship\b", re.I),
+            re.compile(r"\bseasonal\b", re.I),
+            re.compile(r"\bwork[- ]study\b", re.I),
+            re.compile(r"\bunpaid\b", re.I),
+            re.compile(r"\bfreelance\b", re.I),
+            re.compile(r"\bcontract[- ]to[- ]hire\b", re.I),
+            re.compile(r"\bper[- ]diem\b", re.I),
+            re.compile(r"\bhourly\b", re.I),
+        ]
+    )
+
+    @staticmethod
+    def title_is_non_fulltime(title: str) -> bool:
+        """
+        True if title clearly indicates not a standard full-time role
+        (internship, co-op, part-time, etc.). Word-safe; does not match 'internal'.
+        """
+        if not title or not str(title).strip():
+            return False
+        t = str(title).strip()
+        for pat in Config._NON_FULLTIME_TITLE_PATTERNS:
+            if pat.search(t):
+                return True
+        return False
+
     LOCATIONS = [
         'Boston, MA',
         'Remote',
@@ -297,9 +328,10 @@ class Config:
     # Dedup window (Section 13)
     DEDUP_WINDOW_DAYS = 30
     
-    # Job filtering
-    MAX_JOB_AGE_DAYS = 14  # Last 14 days for Greenhouse (has reliable dates)
-    LINKEDIN_HOURS_OLD = 24  # Last 24 hours for LinkedIn scraping (JobSpy, Apify)
+    # Job filtering — max calendar age of the posting (first published / posted-at).
+    # All scrapers require a parseable date within this window (unknown date = excluded).
+    MAX_JOB_AGE_DAYS = 14
+    LINKEDIN_HOURS_OLD = 24  # Passed to JobSpy scrape_jobs (upstream time window)
     
     # Rate limit thresholds (Section 16)
     RATE_LIMIT_WARNING_THRESHOLD = 0.20  # 20%

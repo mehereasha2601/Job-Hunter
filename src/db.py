@@ -7,6 +7,7 @@ Schema from Section 13 of spec.md.
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from src.config import Config
+from src.job_date_utils import parse_iso_datetime, parse_relative_posted_at
 import hashlib
 import requests
 
@@ -37,8 +38,35 @@ class Database:
             headers.update(kwargs.pop('headers'))
         
         response = requests.request(method, url, headers=headers, **kwargs)
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            # Surface PostgREST error body for faster workflow debugging.
+            detail = response.text[:500] if response.text else ""
+            raise requests.exceptions.HTTPError(f"{e} | body={detail}", response=response)
         return response
+
+    @staticmethod
+    def _normalize_date_posted(value) -> Optional[str]:
+        """
+        Convert scraper-provided date_posted to ISO string expected by TIMESTAMPTZ.
+        Returns None for unknown/unparseable values to avoid insert 400 failures.
+        """
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if not isinstance(value, str):
+            return None
+        s = value.strip()
+        if not s:
+            return None
+        dt = None
+        if "ago" in s.lower():
+            dt = parse_relative_posted_at(s)
+        if dt is None:
+            dt = parse_iso_datetime(s)
+        return dt.isoformat() if dt else None
     
     @staticmethod
     def generate_job_id(url: str, company: str, title: str) -> str:
@@ -86,7 +114,7 @@ class Database:
             'source': job.get('source'),
             'description': job.get('description'),
             'location': job.get('location'),
-            'date_posted': job.get('date_posted'),
+            'date_posted': self._normalize_date_posted(job.get('date_posted')),
             'h1b_flag': job.get('h1b_flag', 'unknown'),
             'on_target_list': job.get('on_target_list', False),
             'status': 'seen'

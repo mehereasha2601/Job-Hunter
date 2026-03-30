@@ -52,7 +52,16 @@ def main():
         
         for i, job in enumerate(unscored_jobs, 1):
             print(f"\n  [{i}/{len(unscored_jobs)}] {job['title']} at {job['company']}")
-            
+
+            if Config.title_is_non_fulltime(job.get('title', '')):
+                print("    Skipped (non-full-time title); score set to 0")
+                db.update_job_score(
+                    job_id=job['id'],
+                    score=0.0,
+                    h1b_flag=job.get('h1b_flag', 'unknown'),
+                )
+                continue
+
             score, reasoning = scorer.score_job(job)
             
             # Extract tech stack

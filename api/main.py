@@ -72,6 +72,22 @@ class StatsResponse(BaseModel):
 db = Database()
 
 
+def _parse_content_range_total(content_range: Optional[str]) -> Optional[int]:
+    """Parse PostgREST Content-Range header: '0-24/317' -> 317."""
+    if not content_range:
+        return None
+    parts = content_range.split("/")
+    if len(parts) != 2:
+        return None
+    total = parts[1].strip()
+    if total == "*":
+        return None
+    try:
+        return int(total)
+    except ValueError:
+        return None
+
+
 @app.get("/")
 async def root():
     """Root endpoint."""
@@ -106,6 +122,10 @@ async def list_jobs(
     sort_by: str = Query("score", regex="^(score|date_posted|first_seen_at)$"),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
+    full_time_only: bool = Query(
+        True,
+        description="Exclude non-full-time titles (intern, co-op, part-time, etc.)",
+    ),
     _: str = Depends(verify_password)
 ):
     """
@@ -119,6 +139,8 @@ async def list_jobs(
     - sort_by: Sort field (score, date_posted, first_seen_at) - defaults to score
     - limit: Maximum number of results
     - offset: Pagination offset
+    - full_time_only: When true, drop rows whose title matches intern/co-op/part-time patterns
+      (applied after fetch; Content-Range total may include excluded rows).
     """
     try:
         # Build query parameters
@@ -153,16 +175,25 @@ async def list_jobs(
         response = db._query('GET', f'jobs?{query_string}', headers={
             **db.headers,
             'Range': f'{offset}-{end_range}',
-            'Prefer': 'count=exact'
+            'Prefer': 'count=exact',
         })
         
         jobs = response.json()
-        
+        total = _parse_content_range_total(response.headers.get("Content-Range"))
+
+        if full_time_only:
+            jobs = [
+                j
+                for j in jobs
+                if not Config.title_is_non_fulltime(j.get("title", ""))
+            ]
+
         return {
             "jobs": jobs,
             "count": len(jobs),
+            "total": total,
             "offset": offset,
-            "limit": limit
+            "limit": limit,
         }
     
     except Exception as e:

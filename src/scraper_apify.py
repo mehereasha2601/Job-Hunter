@@ -86,40 +86,28 @@ class ApifyScraper:
         Returns:
             Normalized job dict
         """
-        # Extract date_posted from jobPostedAt field and normalize to ISO format
+        from src.job_date_utils import parse_iso_datetime, parse_relative_posted_at
+
+        # Extract date_posted from jobPostedAt / timestamp (strict normalization for DB display)
         date_posted = None
-        if 'jobPostedAt' in job:
-            date_str = job['jobPostedAt']
-            if date_str:
+        if job.get("jobPostedAt"):
+            date_str = job["jobPostedAt"]
+            if isinstance(date_str, str) and date_str.strip():
                 try:
-                    from datetime import datetime, timedelta
-                    # Parse relative time strings like "5 hours ago", "2 days ago"
-                    if 'ago' in date_str.lower():
-                        parts = date_str.lower().split()
-                        if len(parts) >= 2:
-                            num = int(parts[0])
-                            unit = parts[1]
-                            
-                            if 'hour' in unit:
-                                date_posted = (datetime.now() - timedelta(hours=num)).isoformat()
-                            elif 'day' in unit:
-                                date_posted = (datetime.now() - timedelta(days=num)).isoformat()
-                            elif 'week' in unit:
-                                date_posted = (datetime.now() - timedelta(weeks=num)).isoformat()
-                    elif 'T' in date_str:
-                        # Already ISO format
-                        date_posted = date_str
-                except:
-                    date_posted = date_str  # Store as-is if parsing fails
-        
-        elif 'jobPostedAtTimestamp' in job:
-            # Convert Unix timestamp to ISO format
+                    if "ago" in date_str.lower():
+                        dt = parse_relative_posted_at(date_str)
+                    else:
+                        dt = parse_iso_datetime(date_str)
+                    if dt:
+                        date_posted = dt.isoformat()
+                except Exception:
+                    pass
+        elif job.get("jobPostedAtTimestamp") is not None:
             try:
-                from datetime import datetime
-                timestamp = job['jobPostedAtTimestamp']
+                timestamp = job["jobPostedAtTimestamp"]
                 if isinstance(timestamp, (int, float)):
                     date_posted = datetime.fromtimestamp(timestamp).isoformat()
-            except:
+            except Exception:
                 pass
         
         return {
@@ -142,12 +130,15 @@ class ApifyScraper:
         - US location (exclude Canada-only, international)
         - Exclude senior roles
         - Exclude manager roles
-        - Posted within last 14 days
+        - Posted within last MAX_JOB_AGE_DAYS (verifiable date required)
         """
         title = job.get('title', '').lower()
         location = job.get('location', '').lower()
         raw_data = job.get('raw_data', job)
-        
+
+        if Config.title_is_non_fulltime(job.get('title', '')):
+            return False
+
         # 1. Check job title matches
         title_match = any(
             target.lower() in title
@@ -173,8 +164,9 @@ class ApifyScraper:
         # FOOLPROOF: Also check for state abbreviations with regex (catches any format)
         if not has_us:
             import re
-            # Match any US state abbreviation surrounded by word boundaries or punctuation
-            state_pattern = r'[\s,\-\(]?(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)[\s,\)\.]?'
+            # Use strict word boundaries so we don't match state codes inside words
+            # (e.g. "INDIA" should not match "IN", "LONDON" should not match "ND")
+            state_pattern = r'\b(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\b'
             if re.search(state_pattern, location.upper()):
                 has_us = True
         
@@ -188,48 +180,30 @@ class ApifyScraper:
         if has_non_us and not has_us:
             return False
         
-        # 4. Check recency (Google Jobs provides jobPostedAt field)
-        date_field = raw_data.get('jobPostedAt') or raw_data.get('jobPostedAtTimestamp')
-        if date_field:
-            try:
-                # Handle timestamp (Unix timestamp in seconds)
-                if isinstance(date_field, (int, float)):
-                    posted_date = datetime.fromtimestamp(date_field)
-                    age_days = (datetime.now() - posted_date).days
-                    
-                    if age_days > Config.MAX_JOB_AGE_DAYS:
-                        return False
-                
-                # Handle string formats
-                elif isinstance(date_field, str):
-                    if 'T' in date_field:
-                        posted_date = datetime.fromisoformat(date_field.replace('Z', '+00:00'))
-                        now = datetime.now(posted_date.tzinfo) if posted_date.tzinfo else datetime.now()
-                        age_days = (now - posted_date).days
-                        
-                        if age_days > Config.MAX_JOB_AGE_DAYS:
-                            return False
-                    elif 'ago' in date_field.lower():
-                        # Parse "2 days ago", "1 week ago", etc.
-                        parts = date_field.lower().split()
-                        if len(parts) >= 2:
-                            num = int(parts[0]) if parts[0].isdigit() else 1
-                            unit = parts[1]
-                            
-                            if 'day' in unit:
-                                age_days = num
-                            elif 'week' in unit:
-                                age_days = num * 7
-                            elif 'month' in unit:
-                                age_days = num * 30
-                            else:
-                                age_days = 0
-                            
-                            if age_days > Config.MAX_JOB_AGE_DAYS:
-                                return False
-            except Exception as e:
-                pass  # If parsing fails, include the job
-        
+        # 4. Recency — require verifiable posted time (actor also uses datePosted=today upstream)
+        from src.job_date_utils import age_days_since_posted, parse_iso_datetime, parse_relative_posted_at
+
+        date_field = raw_data.get("jobPostedAt") or raw_data.get("jobPostedAtTimestamp")
+        if date_field is None:
+            return False
+
+        posted_date = None
+        try:
+            if isinstance(date_field, (int, float)):
+                posted_date = datetime.fromtimestamp(date_field)
+            elif isinstance(date_field, str):
+                if "ago" in date_field.lower():
+                    posted_date = parse_relative_posted_at(date_field)
+                else:
+                    posted_date = parse_iso_datetime(date_field)
+        except Exception:
+            return False
+
+        if posted_date is None:
+            return False
+        if age_days_since_posted(posted_date) > Config.MAX_JOB_AGE_DAYS:
+            return False
+
         return True
     
     def build_queries(self, job_titles: List[str], locations: List[str]) -> List[str]:

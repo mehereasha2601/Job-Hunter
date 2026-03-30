@@ -49,8 +49,8 @@ jobs:
               results_per_query=50
           )
           
-          # Normalize
-          normalized_jobs = [scraper.normalize_job(job) for job in jobs]
+          # Already normalized by scrape_multiple_queries
+          normalized_jobs = jobs
           print(f'Scraped {len(normalized_jobs)} jobs')
           
           # Filter and store
@@ -59,20 +59,22 @@ jobs:
           
           for job in normalized_jobs:
               if not h1b_filter:
-                  continue
+                  # If classifier is unavailable, keep ingesting instead of dropping everything.
+                  job['h1b_flag'] = 'unknown'
+                  job['on_target_list'] = False
+              else:
+                  # H1B filter
+                  h1b_result = h1b_filter.classify_job(
+                      company=job['company'],
+                      description=job['description']
+                  )
               
-              # H1B filter
-              h1b_result = h1b_filter.classify_job(
-                  company=job['company'],
-                  description=job['description']
-              )
-              
-              if h1b_result['h1b_flag'] == 'blocked':
-                  filtered_count += 1
-                  continue
-              
-              job['h1b_flag'] = h1b_result['h1b_flag']
-              job['on_target_list'] = h1b_result['on_target_list']
+                  if h1b_result['h1b_flag'] == 'blocked':
+                      filtered_count += 1
+                      continue
+                  
+                  job['h1b_flag'] = h1b_result['h1b_flag']
+                  job['on_target_list'] = h1b_result['on_target_list']
               
               # Store to DB
               job_id = db.generate_job_id(job['url'], job['company'], job['title'])

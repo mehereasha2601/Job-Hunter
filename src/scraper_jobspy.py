@@ -214,12 +214,15 @@ class JobSpyScraper:
         - US location (exclude Canada-only, international)
         - Exclude senior roles
         - Exclude manager roles
-        - Posted within last 14 days
+        - Posted within last MAX_JOB_AGE_DAYS (verifiable date required)
         """
         title = job.get('title', '').lower()
         location = job.get('location', '').lower()
         raw_data = job.get('raw_data', job)  # Use job itself if no raw_data
-        
+
+        if Config.title_is_non_fulltime(job.get('title', '')):
+            return False
+
         # 1. Check job title matches
         title_match = any(
             target.lower() in title
@@ -245,8 +248,9 @@ class JobSpyScraper:
         # FOOLPROOF: Also check for state abbreviations with regex (catches any format)
         if not has_us:
             import re
-            # Match any US state abbreviation surrounded by word boundaries or punctuation
-            state_pattern = r'[\s,\-\(]?(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)[\s,\)\.]?'
+            # Use strict word boundaries so we don't match state codes inside words
+            # (e.g. "INDIA" should not match "IN", "LONDON" should not match "ND")
+            state_pattern = r'\b(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\b'
             if re.search(state_pattern, location.upper()):
                 has_us = True
         
@@ -260,32 +264,41 @@ class JobSpyScraper:
         if has_non_us and not has_us:
             return False
         
-        # 4. Check recency (JobSpy provides date_posted field)
+        # 4. Recency — require a parseable posted date (missing or bad = exclude)
+        from src.job_date_utils import (
+            age_days_since_posted,
+            parse_iso_datetime,
+            parse_relative_posted_at,
+        )
+
         date_field = raw_data.get('date_posted') or raw_data.get('posted_at')
-        if date_field:
-            try:
-                # JobSpy uses various date formats
-                if isinstance(date_field, str):
-                    if 'T' in date_field:
-                        # ISO format
-                        posted_date = datetime.fromisoformat(date_field.replace('Z', '+00:00'))
-                    else:
-                        # Try common formats
-                        for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d-%m-%Y']:
-                            try:
-                                posted_date = datetime.strptime(date_field, fmt)
-                                break
-                            except:
-                                continue
-                        else:
-                            return True  # Can't parse, include it
-                    
-                    now = datetime.now(posted_date.tzinfo) if posted_date.tzinfo else datetime.now()
-                    age_days = (now - posted_date).days
-                    
-                    if age_days > Config.MAX_JOB_AGE_DAYS:
-                        return False
-            except Exception as e:
-                pass  # If parsing fails, include the job
-        
+        if not date_field:
+            return False
+
+        posted_date = None
+        try:
+            if isinstance(date_field, datetime):
+                posted_date = date_field
+            elif isinstance(date_field, str):
+                if "T" in date_field or (
+                    len(date_field) == 10 and date_field[4:5] == "-" and date_field[7:8] == "-"
+                ):
+                    posted_date = parse_iso_datetime(date_field)
+                else:
+                    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%d-%m-%Y"):
+                        try:
+                            posted_date = datetime.strptime(date_field, fmt)
+                            break
+                        except ValueError:
+                            continue
+                    if posted_date is None and "ago" in date_field.lower():
+                        posted_date = parse_relative_posted_at(date_field)
+        except Exception:
+            return False
+
+        if posted_date is None:
+            return False
+        if age_days_since_posted(posted_date) > Config.MAX_JOB_AGE_DAYS:
+            return False
+
         return True

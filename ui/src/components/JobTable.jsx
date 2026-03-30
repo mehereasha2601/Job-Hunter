@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
+import { normalizeJobPostingUrl } from '../utils/jobUrls';
 
 export default function JobTable() {
   const [jobs, setJobs] = useState([]);
+  const [total, setTotal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedJobs, setSelectedJobs] = useState([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [filters, setFilters] = useState({
     status: '',
     min_score: '',
@@ -16,8 +20,12 @@ export default function JobTable() {
   const [tailorSuccess, setTailorSuccess] = useState(false);
 
   useEffect(() => {
+    setPage(1);
+  }, [filters.status, filters.min_score, filters.company, filters.sort_by]);
+
+  useEffect(() => {
     loadJobs();
-  }, [filters]);
+  }, [filters, page, pageSize]);
 
   const loadJobs = async () => {
     try {
@@ -28,9 +36,12 @@ export default function JobTable() {
       if (filters.min_score) cleanFilters.min_score = parseFloat(filters.min_score);
       if (filters.company) cleanFilters.company = filters.company;
       if (filters.sort_by) cleanFilters.sort_by = filters.sort_by;  // NEW
-      
+      cleanFilters.limit = pageSize;
+      cleanFilters.offset = (page - 1) * pageSize;
+
       const data = await api.getJobs(cleanFilters);
       setJobs(data.jobs);
+      setTotal(typeof data.total === 'number' ? data.total : null);
     } catch (err) {
       setError(err.message || 'Failed to load jobs');
     } finally {
@@ -47,6 +58,7 @@ export default function JobTable() {
   };
 
   const handleSelectAll = () => {
+    if (jobs.length === 0) return;
     if (selectedJobs.length === jobs.length) {
       setSelectedJobs([]);
     } else {
@@ -105,6 +117,14 @@ export default function JobTable() {
     return `status-badge status-${status}`;
   };
 
+  const totalPages =
+    total != null && pageSize > 0 ? Math.max(1, Math.ceil(total / pageSize)) : 1;
+  const canGoNext =
+    total != null ? page < totalPages : jobs.length === pageSize;
+  const showingFrom = jobs.length === 0 ? 0 : (page - 1) * pageSize + 1;
+  const showingTo =
+    jobs.length === 0 ? 0 : (page - 1) * pageSize + jobs.length;
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     
@@ -149,7 +169,7 @@ export default function JobTable() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full max-w-none">
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -219,7 +239,10 @@ export default function JobTable() {
 
           <div className="flex items-end">
             <button
-              onClick={() => setFilters({ status: '', min_score: '', company: '', sort_by: 'score' })}
+              onClick={() => {
+                setFilters({ status: '', min_score: '', company: '', sort_by: 'score' });
+                setPage(1);
+              }}
               className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
             >
               Clear Filters
@@ -252,10 +275,11 @@ export default function JobTable() {
         </div>
       )}
 
-      {/* Jobs Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      {/* Jobs Table: vertical + horizontal scroll inside fixed max height */}
+      <div className="bg-white rounded-lg shadow w-full overflow-hidden">
+        <div className="w-full max-h-[min(70vh,calc(100vh-280px))] overflow-x-auto overflow-y-auto">
+        <table className="w-full min-w-[1100px] table-auto divide-y divide-gray-200">
+          <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
             <tr>
               <th className="px-6 py-3 text-left">
                 <input
@@ -296,7 +320,9 @@ export default function JobTable() {
                 </td>
               </tr>
             ) : (
-              jobs.map((job) => (
+              jobs.map((job) => {
+                const postingUrl = normalizeJobPostingUrl(job.url);
+                return (
                 <tr key={job.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <input
@@ -315,15 +341,19 @@ export default function JobTable() {
                     <div className="text-sm font-medium text-gray-900">{job.company}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">{job.title}</div>
-                    <a
-                      href={job.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:text-blue-800"
-                    >
-                      View posting →
-                    </a>
+                    <div className="text-sm text-gray-900 whitespace-nowrap">{job.title}</div>
+                    {postingUrl ? (
+                      <a
+                        href={postingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 hover:text-blue-800"
+                      >
+                        View posting →
+                      </a>
+                    ) : (
+                      <span className="text-xs text-gray-400">No posting URL</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {job.location}
@@ -353,14 +383,69 @@ export default function JobTable() {
                     )}
                   </td>
                 </tr>
-              ))
+              );
+              })
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
-      <div className="text-sm text-gray-500 text-center">
-        Showing {jobs.length} job{jobs.length !== 1 ? 's' : ''}
+      {/* Pagination */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white rounded-lg shadow px-4 py-3">
+        <div className="text-sm text-gray-600">
+          {total != null ? (
+            <>
+              Showing <span className="font-medium text-gray-900">{showingFrom}</span>–
+              <span className="font-medium text-gray-900">{showingTo}</span> of{' '}
+              <span className="font-medium text-gray-900">{total}</span> job{total !== 1 ? 's' : ''}
+            </>
+          ) : (
+            <>
+              Showing <span className="font-medium text-gray-900">{jobs.length}</span> job
+              {jobs.length !== 1 ? 's' : ''} on this page
+            </>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="text-sm text-gray-600 flex items-center gap-2">
+            Rows per page
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPage(1);
+                setPageSize(Number(e.target.value));
+              }}
+              className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </label>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="px-3 py-1 text-sm border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="px-2 text-sm text-gray-700">
+              Page {page}
+              {total != null ? ` of ${totalPages}` : ''}
+            </span>
+            <button
+              type="button"
+              disabled={!canGoNext}
+              onClick={() => setPage((p) => p + 1)}
+              className="px-3 py-1 text-sm border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
