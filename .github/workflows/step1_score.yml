@@ -2,8 +2,8 @@ name: Step 1 - Score Jobs & Send Digest
 
 on:
   schedule:
-    # Once daily around 8 AM ET, Friday and Saturday
-    - cron: '0 12 * * 5,6'
+    # Once daily around 8 AM ET, Monday through Saturday
+    - cron: '0 12 * * 1-6'
   workflow_dispatch:  # Manual trigger
 
 jobs:

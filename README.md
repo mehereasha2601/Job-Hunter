@@ -2,9 +2,9 @@
 
 Automated job hunting pipeline that scrapes job listings, scores relevance, tailors resumes, and generates cold emails using LLMs.
 
-**Version:** 2.0 (March 26, 2026)
+**Version:** 2.3 (March 30, 2026)
 
-## Current Status: Phase 2 Complete ✅
+## Current Status: Web UI + Automation Live ✅
 
 ### Phase 1: LLM Components (Complete)
 - LLM client (Groq + Gemini fallback)
@@ -22,11 +22,11 @@ Automated job hunting pipeline that scrapes job listings, scores relevance, tail
 - Step 2: Tailor → Generate docs → Completion email
 - Rate limit monitoring
 
-### Phase 3: Automation (Next)
-- GitHub Actions workflows
-- Cron scheduling
-- Web UI for job selection
-- OAuth flows
+### Phase 3: Automation + Web UI (Complete)
+- FastAPI backend for jobs, status updates, stats, and tailoring trigger
+- React/Vite web UI with login, filtering, sorting, and pagination
+- GitHub Actions workflows for scraping/scoring automation
+- Manual `step2_tailor` workflow for controlled tailoring batches
 
 ---
 
@@ -90,6 +90,46 @@ python src/main_score.py
 python src/main_tailor.py <job_id1> <job_id2> <job_id3>
 ```
 
+### Web UI (Current)
+
+Run backend + frontend:
+
+```bash
+# Terminal 1 (API)
+python -m uvicorn api.main:app --reload --host 127.0.0.1 --port 8000
+
+# Terminal 2 (UI)
+cd ui
+npm install
+npm run dev -- --host 127.0.0.1 --port 3001
+```
+
+Open: `http://127.0.0.1:3001`
+
+---
+
+## Current Implementation Notes
+
+### Full-Time Only Enforcement
+- Search keywords no longer include internship titles.
+- Title-based non-full-time detector excludes intern/co-op/part-time style roles.
+- Enforced at scrape time (Greenhouse, JobSpy, Apify), score time, and API list response (`full_time_only=true` default).
+
+### Freshness / Date Integrity (No Slipups)
+- Global window: `MAX_JOB_AGE_DAYS = 14`.
+- Jobs must have a parseable posted date within window; missing/unparseable dates are excluded.
+- Shared date parsing utilities handle ISO and relative strings like `"2 days ago"`.
+- DB insert normalizes `date_posted` to valid ISO for `TIMESTAMPTZ` to prevent workflow crashes.
+
+### Job Posting Link Reliability
+- UI normalizes scheme-less URLs (`linkedin.com/...` -> `https://linkedin.com/...`) before opening.
+- Prevents bad localhost redirects from malformed stored links.
+
+### API / UI Behavior
+- `GET /api/jobs` supports filters, sorting, limit/offset pagination, and returns `total` from PostgREST `Content-Range`.
+- Jobs table supports horizontal + vertical scrolling, sticky header, and page controls.
+- Basic password auth is enforced for API endpoints used by UI.
+
 ---
 
 ## Project Structure
@@ -106,6 +146,7 @@ job-hunter/
 │   ├── scraper_apify.py             # Google Jobs scraper
 │   ├── main_scrape.py               # Scraping orchestrator
 │   ├── scorer.py                    # LLM relevance scorer
+│   ├── job_date_utils.py            # Shared strict date parsing utilities
 │   ├── main_score.py                # Step 1: Score + digest
 │   ├── resume_tailor.py             # Resume generation
 │   ├── email_drafter.py             # Cold email generation
@@ -127,7 +168,9 @@ job-hunter/
 ├── requirements.txt                 # All dependencies
 ├── resume.txt                       # Master resume
 ├── spec.md                          # Complete specification
-└── h1b-companies.md                 # 250 target companies
+├── h1b-companies.md                 # 250 target companies
+├── api/main.py                      # FastAPI backend for Web UI
+└── ui/                              # React/Vite frontend
 ```
 
 ---
@@ -146,7 +189,7 @@ H1B Filter (skip blocked companies)
         ↓
 Supabase (store with status='seen')
         ↓
-LLM Scorer (score 1-10 based on 4 criteria)
+LLM Scorer (score 1-10 for full-time roles only)
         ↓
 Supabase (update with scores, status='scored')
         ↓
@@ -182,11 +225,14 @@ Completion Email (with all doc links)
 - ✅ H1B sponsor validation (250 target companies)
 - ✅ Blocking keyword detection (citizenship, clearance, etc.)
 - ✅ Automatic deduplication (30-day window)
+- ✅ Full-time-only enforcement (intern/co-op/part-time exclusion)
+- ✅ Strict recency filter with parseable posted dates only
 
 ### LLM-Powered Scoring
 - ✅ 4 criteria: H1B friendliness, tech stack, location, company tier
 - ✅ Location bonus (Boston +2, Remote +1)
 - ✅ Tech stack extraction
+- ✅ Non-full-time jobs are skipped/penalized before scoring
 
 ### Quality Guardrails
 - ✅ Hallucination detection (no invented facts)
@@ -226,6 +272,8 @@ Completion Email (with all doc links)
   - For email notifications
 - **Google Service Account**: https://console.cloud.google.com
   - For creating Google Docs
+- **UI password**
+  - Set `UI_PASSWORD` in `.env` for Web UI/API basic auth
 
 ---
 
@@ -260,6 +308,13 @@ Completion Email (with all doc links)
 - `PHASE2_COMPLETE.md` - Phase 2 architecture summary
 - `SUPABASE_SETUP.md` - Step-by-step database setup
 - `h1b-companies.md` - 250 target companies with H1B history
+
+### GitHub Workflows
+- `scrape_greenhouse.yml` - Scheduled scrape
+- `scrape_jobspy.yml` - Scheduled scrape (hardened for DB/date handling)
+- `scrape_apify.yml` - Scheduled scrape (requires `APIFY_TOKEN`)
+- `step1_score.yml` - Scheduled scoring + digest
+- `step2_tailor.yml` - Manual tailoring trigger
 
 ---
 

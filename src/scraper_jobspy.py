@@ -1,18 +1,19 @@
 """
-JobSpy wrapper for LinkedIn, Indeed, and ZipRecruiter scraping.
+JobSpy wrapper for LinkedIn/Indeed scraping.
 Section 10 of spec.md.
 """
 
 import time
 from typing import List, Dict
 from datetime import datetime, timedelta
+from collections import defaultdict
 from jobspy import scrape_jobs
 
 from .config import Config
 
 
 class JobSpyScraper:
-    """Wrapper for python-jobspy to scrape LinkedIn, Indeed, ZipRecruiter."""
+    """Wrapper for python-jobspy to scrape configured job boards."""
     
     def __init__(self):
         """Initialize JobSpy scraper."""
@@ -23,7 +24,7 @@ class JobSpyScraper:
         search_term: str,
         location: str = '',
         results_wanted: int = 50,
-        site_name: List[str] = ['linkedin', 'indeed', 'zip_recruiter']
+        site_name: List[str] = None
     ) -> List[Dict]:
         """
         Scrape jobs using JobSpy.
@@ -32,12 +33,15 @@ class JobSpyScraper:
             search_term: Job title or keywords
             location: Location string
             results_wanted: Max results per site
-            site_name: List of sites to scrape
+            site_name: List of sites to scrape (defaults to Config.JOBSPY_SITES)
         
         Returns:
             List of filtered job dicts
         """
         jobs = []
+        if not site_name:
+            site_name = Config.JOBSPY_SITES
+        dropped_by_reason = defaultdict(int)
         
         try:
             print(f"JobSpy: Scraping {search_term} in {location} from {site_name}...")
@@ -64,12 +68,18 @@ class JobSpyScraper:
                 # Normalize and filter jobs
                 for raw_job in raw_jobs:
                     normalized = self.normalize_job(raw_job)
-                    
-                    # Apply filtering logic
-                    if self._should_include_job(normalized):
+                    exclude_reason = self._exclude_reason(normalized)
+                    if exclude_reason is None:
                         jobs.append(normalized)
+                    else:
+                        dropped_by_reason[exclude_reason] += 1
                 
                 print(f"  Found {len(raw_jobs)} jobs, filtered to {len(jobs)}")
+                if dropped_by_reason:
+                    print(
+                        "  Dropped by reason: "
+                        + ", ".join(f"{k}={v}" for k, v in sorted(dropped_by_reason.items()))
+                    )
             else:
                 print(f"  No jobs returned")
         
@@ -205,23 +215,16 @@ class JobSpyScraper:
             'raw_data': job
         }
     
-    def _should_include_job(self, job: Dict) -> bool:
+    def _exclude_reason(self, job: Dict):
         """
-        Check if job meets filtering criteria (same as Greenhouse).
-        
-        Filters:
-        - Job title match
-        - US location (exclude Canada-only, international)
-        - Exclude senior roles
-        - Exclude manager roles
-        - Posted within last MAX_JOB_AGE_DAYS (verifiable date required)
+        Return reason string when a job should be excluded; otherwise return None.
         """
         title = job.get('title', '').lower()
         location = job.get('location', '').lower()
         raw_data = job.get('raw_data', job)  # Use job itself if no raw_data
 
         if Config.title_is_non_fulltime(job.get('title', '')):
-            return False
+            return "non_fulltime_title"
 
         # 1. Check job title matches
         title_match = any(
@@ -229,7 +232,7 @@ class JobSpyScraper:
             for target in Config.JOB_TITLES
         )
         if not title_match:
-            return False
+            return "title_mismatch"
         
         # 2. Exclude senior roles
         is_senior = any(
@@ -237,7 +240,7 @@ class JobSpyScraper:
             for keyword in Config.EXCLUDE_SENIORITY_KEYWORDS
         )
         if is_senior:
-            return False
+            return "seniority"
         
         # 3. Location filtering (FOOLPROOF approach)
         has_us = any(
@@ -262,7 +265,7 @@ class JobSpyScraper:
         # ONLY exclude if clearly non-US (has non-US keywords but no US keywords)
         # Include everything else: US-only, multi-location, ambiguous, or empty
         if has_non_us and not has_us:
-            return False
+            return "non_us_location"
         
         # 4. Recency — require a parseable posted date (missing or bad = exclude)
         from src.job_date_utils import (
@@ -273,7 +276,7 @@ class JobSpyScraper:
 
         date_field = raw_data.get('date_posted') or raw_data.get('posted_at')
         if not date_field:
-            return False
+            return "missing_date"
 
         posted_date = None
         try:
@@ -294,11 +297,24 @@ class JobSpyScraper:
                     if posted_date is None and "ago" in date_field.lower():
                         posted_date = parse_relative_posted_at(date_field)
         except Exception:
-            return False
+            return "bad_date_parse"
 
         if posted_date is None:
-            return False
+            return "bad_date_parse"
         if age_days_since_posted(posted_date) > Config.MAX_JOB_AGE_DAYS:
-            return False
+            return "stale_date"
 
-        return True
+        return None
+
+    def _should_include_job(self, job: Dict) -> bool:
+        """
+        Check if job meets filtering criteria (same as Greenhouse).
+        
+        Filters:
+        - Job title match
+        - US location (exclude Canada-only, international)
+        - Exclude senior roles
+        - Exclude manager roles
+        - Posted within last MAX_JOB_AGE_DAYS (verifiable date required)
+        """
+        return self._exclude_reason(job) is None

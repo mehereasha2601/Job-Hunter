@@ -332,6 +332,8 @@ class Config:
     # All scrapers require a parseable date within this window (unknown date = excluded).
     MAX_JOB_AGE_DAYS = 14
     LINKEDIN_HOURS_OLD = 24  # Passed to JobSpy scrape_jobs (upstream time window)
+    # ZipRecruiter is frequently blocked on GitHub-hosted runners (cf-waf 403), so default to stable sources.
+    JOBSPY_SITES = ['linkedin', 'indeed']
     
     # Rate limit thresholds (Section 16)
     RATE_LIMIT_WARNING_THRESHOLD = 0.20  # 20%
